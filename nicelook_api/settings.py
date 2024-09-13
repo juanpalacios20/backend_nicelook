@@ -75,10 +75,15 @@ WSGI_APPLICATION = 'nicelook_api.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'nicelook_db',
+        'USER': 'postgres',
+        'PASSWORD': 'serenity',
+        'HOST': 'localhost',  # O la IP de tu servidor si está alojada remotamente
+        'PORT': '5432',  # El puerto predeterminado de PostgreSQL
     }
 }
+
 
 
 # Password validation
