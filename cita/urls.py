@@ -4,7 +4,7 @@ from . import views
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register('colores', views.coloresViewSet, 'colores.views')   
+router.register('cita', views.citaViewSet, 'cita.views')   
 
 urlpatterns = [
     path('all/', include(router.urls)),

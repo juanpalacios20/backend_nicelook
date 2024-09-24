@@ -4,7 +4,7 @@ from . import views
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register('colores', views.coloresViewSet, 'colores.views')   
+router.register('agenda', views.agendaViewSet, 'agenda.views')   
 
 urlpatterns = [
     path('all/', include(router.urls)),

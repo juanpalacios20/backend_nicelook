@@ -1,8 +1,11 @@
-from django.urls import path
-from nicelook_api.views import subir_imagen
-from nicelook_api.views import obtener_imagen
+from django.contrib import admin
+from django.urls import path ,include
+from . import views
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register('imagenes', views.imagenesViewSet, 'imagenes.views')   
 
 urlpatterns = [
-    path('subir-imagen/<int:establecimiento_id>/', subir_imagen, name='subir_imagen'),
-    path('obtener-imagen/<int:imagen_id>/', obtener_imagen, name='obtener_imagen'),
+    path('all/', include(router.urls)),
 ]

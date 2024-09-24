@@ -43,6 +43,18 @@ INSTALLED_APPS = [
     'establecimiento',
     'imagenes',
     'colores',
+    'servicio',
+    'administrador',
+    'empleado',
+    'recepcionista',
+    'cliente',
+    'producto',
+    'pago',
+    'reseña',
+    'agenda',
+    'cita',
+    
+    
 ]
 
 MIDDLEWARE = [
