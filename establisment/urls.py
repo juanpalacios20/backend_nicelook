@@ -1,11 +1,8 @@
-from django.contrib import admin
-from django.urls import path ,include
-from . import views
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-router.register('establisment', views.establismentViewSet, 'establisment')   
+from django.urls import path
+from nicelook_api.views import crearEstablecimiento, cambiar_direccion, cambiar_nombre
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('crear-establecimiento/', crearEstablecimiento, name='crear-establecimiento'),
+    path('cambiar-direccion/', cambiar_direccion, name='cambiar-direccion'),
+    path('cambiar-nombre/', cambiar_nombre, name='cambiar-nombre'),
 ]
