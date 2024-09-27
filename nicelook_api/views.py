@@ -10,71 +10,71 @@ import base64
 import json
 
 @csrf_exempt
-def subir_logo(request, establecimiento_id):
+def upload_logo(request, establisment_id):
     if request.method == 'POST':
-        establecimiento = Establisment.objects.get(id=establecimiento_id)
-        imagen_archivo = request.FILES.get('imagen')
+        establisment = Establisment.objects.get(id=establisment_id)
+        image_file = request.FILES.get('image')
 
-        if not imagen_archivo:
+        if not image_file:
             return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
 
-        descripcion = request.POST.get('descripcion', '')
-        codigo = 1
+        description = request.POST.get('description', '')
+        code = 1
 
         Image.objects.create(
-            establecimiento=establecimiento,
-            imagen=imagen_archivo.read(),
-            descripcion=descripcion,
-            codigo=codigo,
-            categoria=NULL,
-            tipo=NULL,
+            establisment=establisment,
+            image=image_file.read(),
+            description=description,
+            code=code,
+            category=NULL,
+            type=NULL,
         )
 
         return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt
-def obtener_logo(request, establecimiento_id):
+def get_logo(request, establisment_id):
     try:
 
-        imagen_obj = Image.objects.filter(establecimiento=establecimiento_id, codigo=1).first()
+        image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
 
-        if not imagen_obj:
+        if not image_obj:
             return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
-        imagen_binaria = imagen_obj.imagen
-        imagen_base64 = base64.b64encode(imagen_binaria).decode('utf-8')
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
 
         mime_type = "image/jpeg"
-        imagen_base64_url = f"data:{mime_type};base64,{imagen_base64}"
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
 
         return JsonResponse({
-            'imagen_base64': imagen_base64_url,
-            'descripcion': imagen_obj.descripcion,
+            'imagen_base64': image_base64_url,
+            'descripcion': image_obj.description,
         }, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
 @csrf_exempt
-def actualizar_logo(request, establecimiento_id):
+def update_logo(request, establisment_id):
     if request.method == 'PUT':
         try:
             # Obtener el primer objeto del QuerySet para el logo que deseas actualizar
-            imagen_obj = Image.objects.filter(establecimiento=establecimiento_id, codigo=1).first()
+            image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
 
-            if not imagen_obj:
+            if not image_obj:
                 return JsonResponse({'error': 'Logo no encontrado'}, status=404)
 
             # Obtener los datos enviados en la solicitud
-            nueva_imagen = request.FILES.get('imagen')
+            new_image = request.FILES.get('image')
 
-            if nueva_imagen:
+            if new_image:
                 # Actualizar la imagen
-                imagen_obj.imagen = nueva_imagen.read()
+                image_obj.image = new_image.read()
 
             # Guardar los cambios
-            imagen_obj.save()
+            image_obj.save()
 
             return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
 
@@ -90,18 +90,18 @@ def actualizar_logo(request, establecimiento_id):
 
 
 @csrf_exempt
-def borrar_logo(request, establecimiento_id):
+def delete_logo(request, establisment_id):
     if request.method == 'DELETE':
         try:
             # Buscar el establecimiento y el logo
-            establecimiento = Establisment.objects.get(id=establecimiento_id)
-            imagen_obj = Image.objects.filter(establecimiento=establecimiento, codigo=1).first()
+            establisment = Establisment.objects.get(id=establisment_id)
+            image_obj = Image.objects.filter(establisment=establisment, code=1).first()
 
-            if not imagen_obj:
+            if not image_obj:
                 return JsonResponse({'error': 'Logo no encontrado'}, status=404)
 
             # Eliminar el logo
-            imagen_obj.delete()
+            image_obj.delete()
 
             return JsonResponse({'mensaje': 'Logo eliminado exitosamente'}, status=200)
 
@@ -114,64 +114,64 @@ def borrar_logo(request, establecimiento_id):
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt
-def subir_banner(request, establecimiento_id):
+def upload_banner(request, establisment_id):
     if request.method == 'POST':
-        establecimiento = Establisment.objects.get(id=establecimiento_id)
-        imagen_archivo = request.FILES.get('imagen')
+        establisment = Establisment.objects.get(id=establisment_id)
+        image_file = request.FILES.get('image')
 
-        if not imagen_archivo:
+        if not image_file:
             return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
 
-        descripcion = request.POST.get('descripcion', '')
-        codigo = 2
+        description = request.POST.get('description', '')
+        code = 2
 
         Image.objects.create(
-            establecimiento=establecimiento,
-            imagen=imagen_archivo.read(),
-            descripcion=descripcion,
-            codigo=codigo,
-            categoria=NULL,
-            tipo=NULL,
+            establisment=establisment,
+            image=image_file.read(),
+            description=description,
+            code=code,
+            category=None,
+            type=None,
         )
 
         return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt
-def obtener_banner(request, establecimiento_id):
+def get_banner(request, establisment_id):
     try:
-        imagen_obj = Image.objects.filter(establecimiento=establecimiento_id, codigo=2).first()
+        image_obj = Image.objects.filter(establisment=establisment_id, code=2).first()
 
-        if not imagen_obj:
+        if not image_obj:
             return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
-        imagen_binaria = imagen_obj.imagen
-        imagen_base64 = base64.b64encode(imagen_binaria).decode('utf-8')
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
 
         mime_type = "image/jpeg" 
-        imagen_base64_url = f"data:{mime_type};base64,{imagen_base64}"
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
 
         return JsonResponse({
-            'imagen_base64': imagen_base64_url,
-            'descripcion': imagen_obj.descripcion,
+            'image_base64': image_base64_url,
+            'description': image_obj.descripcion,
         }, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-def borrar_banner(request, establecimiento_id):
+def delete_banner(request, establisment_id):
     if request.method == 'DELETE':
         try:
             # Buscar el establecimiento y el logo
-            establecimiento = Establisment.objects.get(id=establecimiento_id)
-            imagen_obj = Image.objects.filter(establecimiento=establecimiento, codigo=2).first()
+            establisment = Establisment.objects.get(id=establisment_id)
+            image_obj = Image.objects.filter(establisment=establisment, code=2).first()
 
-            if not imagen_obj:
+            if not image_obj:
                 return JsonResponse({'error': 'Logo no encontrado'}, status=404)
 
             # Eliminar el logo
-            imagen_obj.delete()
+            image_obj.delete()
 
             return JsonResponse({'mensaje': 'Logo eliminado exitosamente'}, status=200)
 
@@ -184,21 +184,21 @@ def borrar_banner(request, establecimiento_id):
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt
-def guardar_color(request, establecimiento_id):
+def upload_color(request, establisment_id):
     if request.method == 'POST':
         try:
-            establecimiento = Establisment.objects.get(id=establecimiento_id)
+            establisment = Establisment.objects.get(id=establisment_id)
         except Establisment.DoesNotExist:
             return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
 
-        codigo_color = request.POST.get('codigo_color')
-        if not codigo_color:
+        code_color = request.POST.get('code_color')
+        if not code_color:
             return JsonResponse({'error': 'No se ha proporcionado ningún código para el color de establecimiento'}, status=400)
 
         try:
             Color.objects.create(
-                establecimiento=establecimiento,
-                codigo=codigo_color
+                establisment=establisment,
+                code=code_color
             )
         except Exception as e:
             return JsonResponse({'error': f'Error al guardar el color: {str(e)}'}, status=500)
@@ -207,20 +207,20 @@ def guardar_color(request, establecimiento_id):
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-def obtener_color(request, color_id):
+def get_color(request, color_id):
     if request.method == 'GET':
         try:
             
             color = Color.objects.get(id=color_id)
-            codigo_color = color.codigo
+            code_color = color.code
             
-            establecimiento = color.establecimiento
+            establisment = color.establisment
 
             return JsonResponse({
-                'color': codigo_color,
+                'color': code_color,
                 'establecimiento': {
-                    'id': establecimiento.id,
-                    'nombre': establecimiento.nombre  
+                    'id': establisment.id,
+                    'nombre': establisment.name  
                 }
             })
         except Color.DoesNotExist:
@@ -231,31 +231,31 @@ def obtener_color(request, color_id):
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt
-def crearEstablecimiento(request):
+def createEstablisment(request):
     if request.method == 'POST':
         try:
             # Obtener los datos de la solicitud
             data = json.loads(request.body)
-            nombre = data.get('nombre')
-            direccion = data.get('direccion')
-            ciudad = data.get('ciudad')
-            metodos_contacto = data.get('metodos_contacto')
-            servicios_ids = data.get('servicios')
+            name = data.get('name')
+            address = data.get('address')
+            city = data.get('city')
+            contact_methods = data.get('contact_methods')
+            services_ids = data.get('services')
 
-            if not nombre or not direccion or not ciudad or not metodos_contacto or not servicios_ids:
+            if not name or not address or not city or not contact_methods or not services_ids:
                 return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
 
-            establecimiento = Establisment.objects.create(
-                nombre=nombre,
-                direccion=direccion,
-                ciudad=ciudad,
-                metodos_contacto=metodos_contacto
+            establisment = Establisment.objects.create(
+                name=name,
+                direccion=address,
+                ciudad=city,
+                contact_methods=contact_methods
             )
 
             # Los ids al ser una relación con servicio, se agregan a parte
-            servicios = Service.objects.filter(id__in=servicios_ids)
-            if servicios.exists():
-                establecimiento.servicios.set(servicios)
+            services = Service.objects.filter(id__in=services_ids)
+            if services.exists():
+                establisment.services.set(services)
             else:
                 return JsonResponse({'error': 'Los servicios no son válidos'}, status=400)
 
@@ -263,12 +263,12 @@ def crearEstablecimiento(request):
             return JsonResponse({
                 'mensaje': 'Establecimiento creado exitosamente',
                 'establecimiento': {
-                    'id': establecimiento.id,
-                    'nombre': establecimiento.nombre,
-                    'direccion': establecimiento.direccion,
-                    'ciudad': establecimiento.ciudad,
-                    'metodos_contacto': establecimiento.metodos_contacto,
-                    'servicios': list(servicios.values('id', 'nombre', 'precio'))
+                    'id': establisment.id,
+                    'name': establisment.name,
+                    'address': establisment.address,
+                    'city': establisment.city,
+                    'contact_methods': establisment.contact_methods,
+                    'services': list(services.values('id', 'name', 'price'))
                 }
             }, status=201)
 
@@ -277,30 +277,30 @@ def crearEstablecimiento(request):
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-def cambiar_nombre(request, establecimiento_id):
+def change_name(request, establisment_id):
     if request.method == 'POST':
-        establecimiento = Establisment.objects.get(id=establecimiento_id)
-        nombre = request.data.get('nombre')
+        establisment = Establisment.objects.get(id=establisment_id)
+        name = request.data.get('name')
 
-        if not nombre:
+        if not name:
             return JsonResponse({'error': 'No se ha proporcionado ningun nombre'}, status=400)
 
-        establecimiento.nombre = nombre
-        establecimiento.save()
+        establisment.name = name
+        establisment.save()
 
         return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-def cambiar_direccion(request, establecimiento_id):
+def change_adress(request, establisment_id):
     if request.method == 'POST':
-        establecimiento = Establisment.objects.get(id=establecimiento_id)
-        direccion = request.data.get('direccion')
+        establisment = Establisment.objects.get(id=establisment_id)
+        address = request.data.get('address')
 
-        if not direccion:
+        if not address:
             return JsonResponse({'error': 'No se ha proporcionado ningun nombre'}, status=400)
 
-        establecimiento.direccion = direccion
-        establecimiento.save()
+        establisment.address = address
+        establisment.save()
 
         return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
     return JsonResponse({'error': 'Método no permitido'}, status=405)
