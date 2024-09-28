@@ -20,4 +20,11 @@ from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    re_path(r'^create_employee/$', views.create_employee),
+    re_path(r'^get_employees/$', views.get_employees),
+    re_path(r'^delete_employee/$', views.delete_employee),
+    re_path(r'^employee_list/$', views.employee_list),
+    re_path(r'^service_list/$', views.service_list),
+    re_path(r'^search_employees/$', views.search_employees),
+    re_path(r'^update_employee/$', views.update_employee),
 ]
