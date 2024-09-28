@@ -1,8 +1,7 @@
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
 from schedule.models import Schedule
 from employee.models import Employee
 from employee.serializers import EmployeeSerializer
@@ -66,7 +65,6 @@ def update_employee(request):
     
 # Listar empleados, no recibe parámetros, ejemplo: /employee_list/
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def employee_list(request):
     employees = Employee.objects.all()
     serializer = EmployeeSerializer(employees, many=True)
@@ -176,7 +174,6 @@ def validate_password(password):
     
 # Crear empleado, recibe los datos del empleado por el Body, ejemplo: /create_employee/
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def create_employee(request):
     #Datos del Usuario
     name = request.data.get('name')
