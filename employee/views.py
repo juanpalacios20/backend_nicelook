@@ -1,12 +1,10 @@
-from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from schedule.models import Schedule
 from employee.models import Employee
-from service.models import Service
-from service.serializers import serviceSerializer
 from employee.serializers import EmployeeSerializer
 from django.contrib.auth.models import User
 import re
@@ -66,15 +64,9 @@ def update_employee(request):
     
     return Response({"success": "Empleado actualizado exitosamente"}, status=status.HTTP_200_OK)
     
-# Listar servicios, no recibe parámetros, ejemplo: /service_list/
-@api_view(['GET'])
-def service_list(request):
-    services = Service.objects.all()
-    serializer = serviceSerializer(services, many=True)
-    return Response(serializer.data)
-
 # Listar empleados, no recibe parámetros, ejemplo: /employee_list/
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def employee_list(request):
     employees = Employee.objects.all()
     serializer = EmployeeSerializer(employees, many=True)
@@ -153,6 +145,7 @@ def get_employees(request):
     
     return Response({'employee': employeeSerializer.data}, status=status.HTTP_200_OK)
 
+#validacion del telefono
 def validate_phone(phone, country_code="+57"):
     # Si el número no tiene un prefijo '+', añadir el código de país predeterminado
     if not phone.startswith('+'):
@@ -166,6 +159,7 @@ def validate_phone(phone, country_code="+57"):
         raise ValidationError("El número de teléfono no es válido.")
     
     return phone  # Devolver el número con el prefijo asignado
+   
     
 # Validacion de la contraseña
 def validate_password(password):
@@ -182,6 +176,7 @@ def validate_password(password):
     
 # Crear empleado, recibe los datos del empleado por el Body, ejemplo: /create_employee/
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_employee(request):
     #Datos del Usuario
     name = request.data.get('name')
