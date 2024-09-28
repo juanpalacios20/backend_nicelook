@@ -1,15 +1,16 @@
 from django.urls import path
-from nicelook_api.views import subir_logo, obtener_logo, actualizar_logo, borrar_logo, subir_banner, obtener_banner, borrar_banner
+from .views import upload_logo, get_logo, update_logo, delete_logo, upload_banner, get_banner, delete_banner, update_banner
 
 urlpatterns = [
     #para el logo
-    path('subir-logo/<int:establecimiento_id>/', subir_logo, name='subir_logo'),
-    path('obtener-logo/<int:establecimiento_id>/', obtener_logo, name='obtener_logo'),
-    path('actualizar-logo/<int:establecimiento_id>/', actualizar_logo, name='actualizar_logo'),
-    path('borrar-logo/<int:establecimiento_id>/', borrar_logo, name='borrar_logo'),
+    path('upload-logo/<int:establisment_id>/', upload_logo, name='upload_logo'),
+    path('get-logo/<int:establisment_id>/', get_logo, name='get_logo'),
+    path('update-logo/<int:establisment_id>/', update_logo, name='update_logo'),
+    path('delete-logo/<int:establisment_id>/', delete_logo, name='delete_logo'),
     
     #para el banner
-    path('subir-banner/<int:establecimiento_id>/', subir_banner, name='subir_banner'),
-    path('obtener-banner/<int:establecimiento_id>/', obtener_banner, name='obtener_banner'),
-    path('borrar-banner/<int:establecimiento_id>/', borrar_banner, name='borrar_banner'),
+    path('upload-banner/<int:establisment_id>/', upload_banner, name='upload_banner'),
+    path('get-banner/<int:establisment_id>/', get_banner, name='get_banner'),
+    path('update-banner/<int:establisment_id>/', update_banner, name='update_banner'),
+    path('delete-banner/<int:establisment_id>/', delete_banner, name='delete_banner'),
 ]

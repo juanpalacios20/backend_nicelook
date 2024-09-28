@@ -1,11 +1,8 @@
-from django.contrib import admin
-from django.urls import path ,include
-from . import views
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-router.register('color', views.colorViewSet, 'color.views')   
+from django.urls import path
+from .views import upload_color, get_color
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    #para el logo
+    path('get-color/<int:establisment_id>/', get_color, name='get-color'),
+    path('upload-logo/<int:establisment_id>/', upload_color, name='upload-color'),
 ]

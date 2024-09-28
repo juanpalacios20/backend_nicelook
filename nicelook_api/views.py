@@ -8,37 +8,38 @@ from service.models import Service
 from django.views.decorators.csrf import csrf_exempt
 import base64
 import json
+from rest_framework.decorators import api_view
 
+@api_view(['POST'])
 @csrf_exempt
 def upload_logo(request, establisment_id):
-    if request.method == 'POST':
-        establisment = Establisment.objects.get(id=establisment_id)
-        image_file = request.FILES.get('image')
+    
+    establisment = Establisment.objects.get(id=establisment_id)
+    image_file = request.FILES.get('image')
 
-        if not image_file:
-            return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
+    if not image_file:
+        return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
 
-        description = request.POST.get('description', '')
-        code = 1
+    description = request.POST.get('description', '')
+    code = 1
 
-        Image.objects.create(
-            establisment=establisment,
-            image=image_file.read(),
-            description=description,
-            code=code,
-            category=NULL,
-            type=NULL,
-        )
+    Image.objects.create(
+        establisment=establisment,
+        image=image_file.read(),
+        description=description,
+        code=code,
+        category=NULL,
+        type=NULL,
+    )
 
-        return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
+    return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
 
+@api_view(['GET'])
 @csrf_exempt
 def get_logo(request, establisment_id):
     try:
-
         image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
-
+        
         if not image_obj:
             return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
@@ -55,89 +56,70 @@ def get_logo(request, establisment_id):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    
-@csrf_exempt
+
+@api_view(['PATCH'])
 def update_logo(request, establisment_id):
-    if request.method == 'PUT':
-        try:
-            # Obtener el primer objeto del QuerySet para el logo que deseas actualizar
-            image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
+    try:        
+        image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
+        if not image_obj:
+            return JsonResponse({'error': 'Logo no encontrado'}, status=404)         
+        new_image = request.FILES.get('image')
+        if new_image:
+            image_obj.image = new_image.read()
+        image_obj.save()
+        return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+    except Exception as e:
+        print(f"Error: {str(e)}")  
+        return JsonResponse({'error': str(e)}, status=500)
 
-            if not image_obj:
-                return JsonResponse({'error': 'Logo no encontrado'}, status=404)
-
-            # Obtener los datos enviados en la solicitud
-            new_image = request.FILES.get('image')
-
-            if new_image:
-                # Actualizar la imagen
-                image_obj.image = new_image.read()
-
-            # Guardar los cambios
-            image_obj.save()
-
-            return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
-
-        except Establisment.DoesNotExist:
-            return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
-
-        except Exception as e:
-            print(f"Error: {str(e)}")  # Debug: imprime el error en la consola
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-
-
+@api_view(['DELETE'])
 @csrf_exempt
 def delete_logo(request, establisment_id):
-    if request.method == 'DELETE':
-        try:
-            # Buscar el establecimiento y el logo
-            establisment = Establisment.objects.get(id=establisment_id)
-            image_obj = Image.objects.filter(establisment=establisment, code=1).first()
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+        image_obj = Image.objects.filter(establisment=establisment, code=1).first()
 
-            if not image_obj:
-                return JsonResponse({'error': 'Logo no encontrado'}, status=404)
+        if not image_obj:
+            return JsonResponse({'error': 'Logo no encontrado'}, status=404)
 
-            # Eliminar el logo
-            image_obj.delete()
 
-            return JsonResponse({'mensaje': 'Logo eliminado exitosamente'}, status=200)
+        image_obj.delete()
 
-        except Establisment.DoesNotExist:
-            return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+        return JsonResponse({'mensaje': 'Logo eliminado exitosamente'}, status=200)
 
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
 
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
+    
+@api_view(['POST'])
 @csrf_exempt
 def upload_banner(request, establisment_id):
-    if request.method == 'POST':
-        establisment = Establisment.objects.get(id=establisment_id)
-        image_file = request.FILES.get('image')
+    establisment = Establisment.objects.get(id=establisment_id)
+    image_file = request.FILES.get('image')
 
-        if not image_file:
-            return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
+    if not image_file:
+        return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
 
-        description = request.POST.get('description', '')
-        code = 2
+    description = request.POST.get('description', '')
+    code = 2
 
-        Image.objects.create(
-            establisment=establisment,
-            image=image_file.read(),
-            description=description,
-            code=code,
-            category=None,
-            type=None,
+    Image.objects.create(
+        establisment=establisment,
+        image=image_file.read(),
+        description=description,
+        code=code,
+        category=None,
+            ype=None,
         )
 
-        return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
+    return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_banner(request, establisment_id):
     try:
         image_obj = Image.objects.filter(establisment=establisment_id, code=2).first()
@@ -158,10 +140,34 @@ def get_banner(request, establisment_id):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
+    
+@api_view(['PATCH'])
 @csrf_exempt
+def update_banner(request, establisment_id):
+    try:           
+        image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
+
+        if not image_obj:
+            return JsonResponse({'error': 'Logo no encontrado'}, status=404)
+
+        new_image = request.FILES.get('image')
+
+        if new_image:
+            image_obj.image = new_image.read()
+            
+        image_obj.save()
+
+        return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['DELETE'])
 def delete_banner(request, establisment_id):
-    if request.method == 'DELETE':
         try:
             # Buscar el establecimiento y el logo
             establisment = Establisment.objects.get(id=establisment_id)
@@ -181,11 +187,8 @@ def delete_banner(request, establisment_id):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-@csrf_exempt
+@api_view(['PATCH'])
 def upload_color(request, establisment_id):
-    if request.method == 'POST':
         try:
             establisment = Establisment.objects.get(id=establisment_id)
         except Establisment.DoesNotExist:
@@ -205,8 +208,7 @@ def upload_color(request, establisment_id):
 
         return JsonResponse({'mensaje': 'Color guardado exitosamente'}, status=201)
 
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
+@api_view(['GET'])
 def get_color(request, color_id):
     if request.method == 'GET':
         try:
@@ -230,80 +232,100 @@ def get_color(request, color_id):
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-@csrf_exempt
+@api_view(['POST'])
 def createEstablisment(request):
-    if request.method == 'POST':
-        try:
-            # Obtener los datos de la solicitud
-            data = json.loads(request.body)
-            name = data.get('name')
-            address = data.get('address')
-            city = data.get('city')
-            contact_methods = data.get('contact_methods')
-            services_ids = data.get('services')
+    try:
+        data = json.loads(request.body)
+        name = data.get('name')
+        address = data.get('address')
+        city = data.get('city')
+        contact_methods = data.get('contact_methods')  # Se espera que sea un diccionario JSON
+        services_ids = data.get('services')
 
-            if not name or not address or not city or not contact_methods or not services_ids:
-                return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
+        if not name or not address or not city or contact_methods is None or not services_ids:
+            return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
 
-            establisment = Establisment.objects.create(
-                name=name,
-                direccion=address,
-                ciudad=city,
-                contact_methods=contact_methods
-            )
+        establisment = Establisment.objects.create(
+            name=name,
+            direccion=address,
+            ciudad=city,
+            contact_methods=contact_methods
+        )
+        services = Service.objects.filter(id__in=services_ids)
+        if services.exists():
+            establisment.services.set(services)
+        else:
+            return JsonResponse({'error': 'Los servicios no son válidos'}, status=400)
 
-            # Los ids al ser una relación con servicio, se agregan a parte
-            services = Service.objects.filter(id__in=services_ids)
-            if services.exists():
-                establisment.services.set(services)
-            else:
-                return JsonResponse({'error': 'Los servicios no son válidos'}, status=400)
+        return JsonResponse({
+            'mensaje': 'Establecimiento creado exitosamente',
+            'establecimiento': {
+                'id': establisment.id,
+                'name': establisment.name,
+                'address': establisment.address,
+                'city': establisment.city,
+                'contact_methods': establisment.contact_methods,
+                'services': list(services.values('id', 'name', 'price'))
+            }
+        }, status=201)
 
-            # esto nomas es para visualizar que todo esté agregado correctamente
-            return JsonResponse({
-                'mensaje': 'Establecimiento creado exitosamente',
-                'establecimiento': {
-                    'id': establisment.id,
-                    'name': establisment.name,
-                    'address': establisment.address,
-                    'city': establisment.city,
-                    'contact_methods': establisment.contact_methods,
-                    'services': list(services.values('id', 'name', 'price'))
-                }
-            }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Datos inválidos'}, status=400)
-
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-def change_name(request, establisment_id):
-    if request.method == 'POST':
+        
+@api_view(['PATCH'])
+def update_establisment(request, establisment_id):
+    try:
         establisment = Establisment.objects.get(id=establisment_id)
+
+        # Obtener los datos del request y verificar si fueron enviados
         name = request.data.get('name')
-
-        if not name:
-            return JsonResponse({'error': 'No se ha proporcionado ningun nombre'}, status=400)
-
-        establisment.name = name
-        establisment.save()
-
-        return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-def change_adress(request, establisment_id):
-    if request.method == 'POST':
-        establisment = Establisment.objects.get(id=establisment_id)
         address = request.data.get('address')
+        city = request.data.get('city')
+        contact_methods = request.data.get('contact_methods')  # Agregar esta línea
 
-        if not address:
-            return JsonResponse({'error': 'No se ha proporcionado ningun nombre'}, status=400)
+        # Actualizar los campos solo si los valores fueron proporcionados
+        if name:
+            establisment.name = name
+        if address:
+            establisment.address = address
+        if city:
+            establisment.city = city
+        if contact_methods is not None:  # Solo actualizar si se proporciona un valor
+            establisment.contact_methods = contact_methods
 
-        establisment.address = address
+        # Guardar los cambios en la base de datos
         establisment.save()
 
-        return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
-    return JsonResponse({'error': 'Método no permitido'}, status=405)
+        return JsonResponse({'mensaje': 'Establecimiento actualizado correctamente'}, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+    
+@api_view(['GET'])
+def get_establisment(request, establisment_id):
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+
+        return JsonResponse({
+            'id': establisment.id,
+            'name': establisment.name,
+            'address': establisment.address,
+            'city': establisment.city,
+            'contact_methods': establisment.contact_methods,  
+            'services': list(establisment.services.values('id', 'name', 'price'))  
+        }, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no existe'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 
