@@ -17,7 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from . import views
+from .social_auth_views import GoogleLogin
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
+    path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
+    path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
 ]
