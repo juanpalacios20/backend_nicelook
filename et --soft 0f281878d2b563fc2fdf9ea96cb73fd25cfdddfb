@@ -1,0 +1,83 @@
+[33mcommit 95aa1be85fecf17a39e11267f6d67fea5b46fd45[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mBack_sebas_auth[m[33m)[m
+Author: Sebastian Hernadez <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Sat Sep 28 18:50:49 2024 -0500
+
+    Removed sensitive information and used environment variables
+
+[33mcommit 594979b54d175fefecd015688f5ea316338044b2[m
+Author: Sebastian Hernadez <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Sat Sep 28 18:38:56 2024 -0500
+
+    Removed sensitive information
+
+[33mcommit abe9c7647f3c276caa9153e20dfd3ad5b4c04330[m
+Author: Sebastian Hernadez <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Sat Sep 28 18:31:40 2024 -0500
+
+    sa
+
+[33mcommit 0f281878d2b563fc2fdf9ea96cb73fd25cfdddfb[m
+Author: Sebastian Hernadez <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Sat Sep 28 18:30:13 2024 -0500
+
+    fix
+
+[33mcommit d5d138db16f4c196f17e356389be52d97d36c01d[m
+Author: Sebastian Hernadez <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Sat Sep 28 18:23:44 2024 -0500
+
+    functional endpoint
+
+[33mcommit 3d268593822461ea48919e6b1831e890c4bf8581[m[33m ([m[1;31morigin/Back_sebas_auth[m[33m)[m
+Author: keivch <sebastian.hernandez.scarpetta@correounivalle.edu.co>
+Date:   Fri Sep 27 10:37:21 2024 -0500
+
+    first commit
+
+[33mcommit 27087e80dddff979311432c4d0ad061a981323c5[m[33m ([m[1;31morigin/desarrollo[m[33m)[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Thu Sep 26 20:23:10 2024 -0500
+
+    servicios de establecimiento pueden ser nulos
+
+[33mcommit 4f44170a2984aea6ad9df91760cd6b867116faac[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Thu Sep 26 14:49:33 2024 -0500
+
+    pasando los modelos a inglés
+
+[33mcommit 55a68edb48f5392402fdf73e2a366f92b3546277[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Tue Sep 24 11:41:42 2024 -0500
+
+    creando modelos
+
+[33mcommit 33cee7b5c7abcacebed9081036e5f22c9130da01[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Mon Sep 23 20:13:10 2024 -0500
+
+    guardando y mostrando color e imagenes
+
+[33mcommit 25cf00f618750fea1ec8c33c1808f135e6a65d87[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: FelipeK57 <166841728+FelipeK57@users.noreply.github.com>
+Date:   Fri Sep 13 13:25:17 2024 -0500
+
+    configuración de corsheaders y instalación restframework
+
+[33mcommit 692f914cc374639bfa5e67c91be8b16fb6fcf903[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Fri Sep 13 12:33:24 2024 -0500
+
+    configuracion db
+
+[33mcommit 3d811b5a15ab77ceb799dcd848d8b0b00b2d57c6[m
+Author: juanpalacios20 <juan.palacios.casanova@correounivalle.edu.co>
+Date:   Fri Sep 13 12:12:20 2024 -0500
+
+    primer commit
+
+[33mcommit ca647ae5dfe9ab52f3174deee09991e178c949b9[m
+Author: Juan Palacios <juanpalaciosc20@gmail.com>
+Date:   Fri Sep 13 12:07:35 2024 -0500
+
+    creacion proyecto

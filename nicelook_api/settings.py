@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 import os
 from pathlib import Path 
-from decouple import config
+from decouple import AutoConfig
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +22,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('DJANGO_SECRET_KEY')
+# Crea una instancia de AutoConfig
+config = AutoConfig()
+
+# Ahora usa config para obtener tu clave secreta
+SECRET_KEY = 'django-insecure-7pdxf=j1!sqj7&z7&hszn6pp=(*+8kyxttqdu$e0+#fm8@$9at'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -108,9 +112,9 @@ WSGI_APPLICATION = 'nicelook_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
+        'NAME': 'nicelook_db',
+        'USER': 'postgres',
+        'PASSWORD': 'serenity',
         'HOST': 'localhost',
         'PORT': '5432',
     }
