@@ -34,6 +34,7 @@ class GoogleLogin(SocialLoginView):
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
+                'username': email,
                 'first_name': first_name,
                 'last_name': last_name,
             }

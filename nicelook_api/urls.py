@@ -24,4 +24,5 @@ urlpatterns = [
     path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
+    path('register/admin/', views.register, name='register_admin'),
 ]
