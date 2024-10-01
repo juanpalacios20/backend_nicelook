@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'schedule',
     'appointment',
     'employee_services',
+    'review_employee',
+    'review_product', 
+    'category',
     
     
 ]
