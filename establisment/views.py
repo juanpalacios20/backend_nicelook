@@ -14,9 +14,6 @@ def createEstablisment(request):
         city = data.get('city')
         contact_methods = data.get('contact_methods')
 
-        if not name or not address or not city or contact_methods is None or not services_ids:
-            return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
-
         establisment = Establisment.objects.create(
             name=name,
             direccion=address,
