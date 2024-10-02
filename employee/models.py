@@ -10,9 +10,9 @@ class Employee (models.Model):
     state = models.BooleanField()
     especialty = models.ManyToManyField(Category)
     schedule = models.OneToOneField(Schedule, on_delete=models.CASCADE, blank=True, null=True)
-    googleid = models.CharField(null=True)
-    token = models.CharField(null=True)
-    accestoken = models.CharField(null=True)
+    googleid = models.CharField(null=True, blank=True)
+    token = models.CharField(null=True, blank=True)
+    accestoken = models.CharField(null=True, blank=True)
     
     
     def __str__ (self):
