@@ -1,6 +1,5 @@
 from django.db import models
 from establisment.models import Establisment
-from review.models import Review
 
 # Create your models here.
 class Product (models.Model):
@@ -15,7 +14,7 @@ class Product (models.Model):
     quantity = models.IntegerField()
     estate = models.BooleanField()
     discount = models.FloatField()
-    review = models.ManyToManyField(Review)
+
     
     def __str__ (self):
         return self.name
