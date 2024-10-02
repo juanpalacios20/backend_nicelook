@@ -16,7 +16,7 @@ class serviceViewSet(viewsets.ModelViewSet):
 
 #CREAR SERVICIO
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def create_service(request):
     #Se obtiene los parametros enviados por parte del front
     data = request.data
@@ -30,18 +30,18 @@ def create_service(request):
         "category": data.get("category"),
     }
     
-    #Se le pasa el diccionario al serializador para crear el objeto
-    serializer = serviceSerializer(data=service_data)
-    if serializer.is_valid():
-        try:
-            service = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #Se usa el diccionario para crear el objeto servicio
+    try:
+        service = Service.objects.create(**service_data)
+        service.save()
+        serializer= serviceSerializer(service)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    except:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 #ACTUALIZAR SERVICIO
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def update_service(request):
     
     try:
@@ -120,7 +120,7 @@ def list_service(request):
     
     try:
         #Se obtienen todos los servicios que se encuentran en la base de datos
-        services= serviceSerializer.objects.all()
+        services= Service.objects.all()
         
     except services is None:
         #Si la lista es vacia, se devulve un mensaje informando que no hay servicios registrados
@@ -133,12 +133,40 @@ def list_service(request):
         {
             "Name": service.name,
             "Price": service.price,
-            "Duration": service.duration,
-            "Commission": service.commission,
+            "Comission": service.commission,
             "Category": service.category
         }
         for service in services
     ]
 
     #Se envia la informacion y un codigo http 200
+    return Response(service_data, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+#@permission_classes([IsAuthenticated])
+def filter_by_category(request):
+    category = request.query_params.get("category")
+    
+    if not category:
+        return Response(
+            {"error": "La categoria es necesaria"}, status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    services = Service.objects.filter(category=category)
+    
+    if not services.exists():
+        return Response(
+            {"message": "No se encontraron servicios con esta categoria."}, status=status.HTTP_404_NOT_FOUND
+        )
+    
+    service_data = [
+        {
+            "Name": service.name,
+            "Price": service.price,
+            "Commission": service.commission,
+            "Category": service.category
+        }
+        for service in services
+    ]
+    
     return Response(service_data, status=status.HTTP_200_OK)
