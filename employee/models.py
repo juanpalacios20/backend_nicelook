@@ -9,7 +9,7 @@ class Employee (models.Model):
     phone = models.CharField(max_length=15)
     state = models.BooleanField()
     especialty = models.ManyToManyField(Category)
-    schedule = models.OneToOneField(Schedule, on_delete=models.CASCADE)
+    schedule = models.OneToOneField(Schedule, on_delete=models.CASCADE, blank=True, null=True)
     googleid = models.CharField(null=True)
     token = models.CharField(null=True)
     accestoken = models.CharField(null=True)

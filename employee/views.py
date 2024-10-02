@@ -1,16 +1,20 @@
 from rest_framework import viewsets
+from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from schedule.models import Schedule
 from employee.models import Employee
 from employee.serializers import EmployeeSerializer
-from django.contrib.auth.models import User
 import re
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import Q
 from django.db.models import Max
+import string
+import secrets
+from django.db import transaction
+from category.models import Category
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
@@ -157,42 +161,39 @@ def validate_phone(phone, country_code="+57"):
         raise ValidationError("El número de teléfono no es válido.")
     
     return phone  # Devolver el número con el prefijo asignado
+
+def generate_random_password(length=8):
+    # Puedes ajustar los caracteres permitidos según tus necesidades
+    characters = string.ascii_letters + string.digits + string.punctuation
+    # Genera una contraseña aleatoria
+    password = ''.join(secrets.choice(characters) for _ in range(length))
+    return password
+
+# Genera una contraseña aleatoria de 12 caracteres
+random_password = generate_random_password(length=8)
    
-    
-# Validacion de la contraseña
-def validate_password(password):
-    if len(password) < 8:
-        raise ValidationError("La contraseña debe tener al menos 8 caracteres.")
-    if not re.search(r'[A-Z]', password):
-        raise ValidationError("La contraseña debe contener al menos una letra mayúscula.")
-    if not re.search(r'[a-z]', password):
-        raise ValidationError("La contraseña debe contener al menos una letra minúscula.")
-    if not re.search(r'[0-9]', password):
-        raise ValidationError("La contraseña debe contener al menos un número.")
-    if not re.search(r'[\W_]', password):
-        raise ValidationError("La contraseña debe contener al menos un carácter especial.")
     
 # Crear empleado, recibe los datos del empleado por el Body, ejemplo: /create_employee/
 @api_view(['POST'])
 def create_employee(request):
-    #Datos del Usuario
+    # Datos del Usuario
     name = request.data.get('name')
     last_name = request.data.get('last_name')
     email = request.data.get('email')
-    password = request.data.get('password')
-    #Datos del Empleado
-    code = request.data.get('code')
+    password = request.data.get('password', None)
+
+    # Datos del Empleado
     phone = request.data.get('phone')
-    especialty = request.data.get('especialty')
-    schedule = request.data.get('schedule')
-    googleid = request.data.get('googleid', None)
-    accestoken = request.data.get('accestoken', None)
-    token = request.data.get('token', None)
-    
-     # Validar campos obligatorios
-    if not name or not last_name or not email or not password or not phone or not especialty or not schedule:
-        return Response({'error': 'Todos los campos son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
-    
+    especialty = request.data.get('especialty', [])  # Lista de especialidades (IDs)
+    schedule = request.data.get('schedule', None)  # Opcional
+    googleid = request.data.get('googleid', None)  # Opcional
+    accestoken = request.data.get('accestoken', None)  # Opcional
+    token = request.data.get('token', None)  # Opcional
+
+    # Validar campos obligatorios
+    if not name or not last_name or not email or not phone or not especialty:
+        return Response({'error': 'Los campos nombre, apellido, email, teléfono y especialidad son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
+
     # Validar email
     try:
         validate_email(email)
@@ -204,57 +205,57 @@ def create_employee(request):
         phone = validate_phone(phone)
     except ValidationError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validar contraseña
-    try:
-        validate_password(password)
-    except ValidationError as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
     # Verificar si el email ya está registrado
     if User.objects.filter(email=email).exists():
         return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validar agenda
-    try:
-        schedule = Schedule.objects.get(id=schedule)
-    except Schedule.DoesNotExist:
-        return Response({'error': 'Agenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Validar agenda si se proporciona
+    if schedule:
+        try:
+            schedule = Schedule.objects.get(id=schedule)
+        except Schedule.DoesNotExist:
+            return Response({'error': 'Agenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinar el siguiente código para el empleado
     next_code = Employee.objects.aggregate(Max('code'))['code__max'] or 0
     next_code += 1  # Incrementar para asignar un nuevo código
+    
 
     # Creación de usuario
     username = f"{name}{last_name}{next_code}"
     if User.objects.filter(username=username).exists():
         return Response({'error': 'El nombre de usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = User.objects.create_user(username=username, email=email, password=password, first_name=name, last_name=last_name)
 
-    # Creación de empleado
-    state = True  # Estado inicial del empleado
-    employee = Employee.objects.create(
-        user=user,
-        code=next_code,  # Asignar el código secuencial
-        phone=phone,
-        state=state,
-        especialty=especialty,
-        schedule=schedule,
-        googleid=googleid,
-        token=token,
-        accestoken=accestoken
-    )
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username, 
+                email=email, 
+                password=random_password, 
+                first_name=name, 
+                last_name=last_name
+            )
 
-    # Guardar empleado
-    employee.save()
+            # Creación de empleado
+            state = True  # Estado inicial del empleado
+            employee = Employee.objects.create(
+                user=user,
+                code=next_code,  # Asignar el código secuencial
+                phone=phone,
+                state=state,
+                schedule=schedule if schedule is not None else None,  # Puede ser None
+                googleid=googleid,
+                token=token,
+                accestoken=accestoken
+            )
+
+            # Asignar especialidades
+            especialties = Category.objects.filter(id__in=especialty)
+            employee.especialty.set(especialties)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"success": "Empleado creado exitosamente"}, status=status.HTTP_201_CREATED)
-        
-
-
-    
-    
-    
-
-    

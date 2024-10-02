@@ -8,7 +8,7 @@ class Review (models.Model):
     autor = models.ForeignKey(Client, on_delete=models.CASCADE)
     comment = models.CharField(max_length=500)
     rating = models.FloatField()
-    establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
+    establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE, null=True, blank=True)
     
     def __str__(self):
         return self.comment
