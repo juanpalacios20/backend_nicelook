@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import upload_logo, get_logo, update_logo, delete_logo, upload_banner, get_banner, delete_banner, update_banner
+from .views import upload_logo, get_logo,delete_logo, upload_banner, get_banner, delete_banner
 
 urlpatterns = [
     #para el logo
