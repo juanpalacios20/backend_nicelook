@@ -1,11 +1,8 @@
-from django.contrib import admin
-from django.urls import path ,include
-from . import views
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-router.register('establisment', views.establismentViewSet, 'establisment')   
+from django.urls import path
+from .views import createEstablisment, update_establisment, get_establisment
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('create-establisment/', createEstablisment, name='create-establisment'),
+    path('update-establisment/<int:establisment_id>/', update_establisment, name='update-establisment'),
+    path('get-establisment/<int:establisment_id>/', get_establisment, name='get-establisment'),
 ]
