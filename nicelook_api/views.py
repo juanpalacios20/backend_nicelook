@@ -5,6 +5,9 @@ from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from administrator.models import Administrator
+from product.models import Product
+from establisment.models import Establisment
+from django.middleware.csrf import get_token
 
 @api_view(['POST'])
 def register(request):
@@ -29,6 +32,59 @@ def register(request):
     user.save()
     token = Token.objects.create(user=user)
     return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def loginAdmin(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+    
+    if not email or not password:
+        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = User.objects.filter(email=email).first()
+    
+    if not user or not user.check_password(password):
+        return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    token = Token.objects.filter(user=user).first()
+    if not token:
+        token = Token.objects.create(user=user)
+        
+    csrf_token = get_token(request)
+    
+    return Response({'token': token.key, 'csrf_token': csrf_token}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def addProduct(request):
+    try:
+        name = request.data.get('name')
+        establisment = request.data.get('establisment')
+        description = request.data.get('description')
+        price = request.data.get('price')
+        distributor = request.data.get('distributor')
+        entry_date = request.data.get('entry_date')
+        expiration_date = request.data.get('expiration_date')
+        quantity = request.data.get('quantity')
+        brand = request.data.get('brand')
+        estate = True
+        
+        if not name or not description or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        Product.objects.create(name=name,
+                               description=description, 
+                               price=price, distributor=distributor, 
+                               entry_date=entry_date, expiration_date=expiration_date, 
+                               quantity=quantity, estate=estate,
+                               establisment=Establisment.objects.get(id=establisment),
+                               brand=brand, discount=0)
+        return Response({'message': 'Product added successfully'}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+
 
 
 

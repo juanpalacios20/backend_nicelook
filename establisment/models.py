@@ -8,6 +8,6 @@ class Establisment(models.Model):
     city = models.CharField(error_messages=150)
     contact_methods = models.CharField(max_length=50)
     services =  models.ManyToManyField(Service, null=True)
-    review = models.ManyToManyField(Review)
+    review = models.ManyToManyField(Review, null=True)
     def __str__(self):
         return self.name

@@ -25,4 +25,6 @@ urlpatterns = [
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
     path('register/admin/', views.register, name='register_admin'),
+    path('login/admin/', views.loginAdmin, name='login_admin'),
+    path('Product/add/', views.addProduct, name='add_product'),
 ]
