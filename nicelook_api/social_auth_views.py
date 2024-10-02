@@ -5,6 +5,9 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 import requests
 from administrator.models import Administrator
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
+
 
 User = get_user_model()
 
@@ -41,17 +44,20 @@ class GoogleLogin(SocialLoginView):
         )
 
         if created:
+            # Crear un administrador si el usuario es nuevo
             Administrator.objects.create(user=user)
-            
 
-        # (Opcional) Autenticar al usuario
-        # login(request, user)
-        
+        # Generar tokens de acceso (JWT)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
 
+        # Responder con el token de acceso
         return Response({
-            'email': email, 
-            'first_name': first_name, 
-            'last_name': last_name, 
+            'email': email,
+            'first_name': first_name,
+            'last_name': last_name,
             'google_id': google_id,
-            'picture': token_info.get('picture')# También puedes devolver la imagen del perfil
+            'picture': token_info.get('picture'),  # Imagen de perfil
+            'access_token': access_token,  # Devuelve el token de acceso
+            'refresh_token': str(refresh),  # (Opcional) Devuelve el token de refresco
         }, status=status.HTTP_200_OK)
