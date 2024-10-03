@@ -49,15 +49,17 @@ class GoogleLogin(SocialLoginView):
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
 
-        # Responder con el token de acceso
+        # Agregar información adicional al token
+        refresh['email'] = user.email
+        refresh['first_name'] = user.first_name
+        refresh['last_name'] = user.last_name
+        refresh['google_id'] = google_id
+
+
+        # Responder con el token de acceso y la información adicional
         return Response({
-            'email': email,
-            'first_name': first_name,
-            'last_name': last_name,
-            'google_id': google_id,
-            'picture': token_info.get('picture'),  # Imagen de perfil
-            'access_token': access_token,  # Devuelve el token de acceso
-            'refresh_token': str(refresh),  # (Opcional) Devuelve el token de refresco
+            'access_token': str(refresh.access_token),  # Token de acceso con información del usuario
+            'refresh_token': str(refresh),
+            'email': refresh.access_token.get('email'), # Token de refresco
         }, status=status.HTTP_200_OK)
