@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.request import Request
 
 # Create your views here.
 
@@ -16,46 +17,65 @@ class serviceViewSet(viewsets.ModelViewSet):
 
 #CREAR SERVICIO
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def create_service(request):
     #Se obtiene los parametros enviados por parte del front
-    data = request.data
-    
+    #data = request.data
+    name = request.data.get("name")
+    price = request.data.get("price")
+    commission = request.data.get("commission")
+    category = request.data.get("category")
+
+    commission = int(commission)
+
+    if commission < 0 or commission > 100:
+        return Response(
+            {"error": "La comisión debe ser un número entre 0 y 100."}, status=status.HTTP_400_BAD_REQUEST
+        )
+    commission = commission/100
+        
     #Se crea un diccionario con los atributos necesarios para crear un objeto de tipo servicio
     service_data = {
-        "name": data.get("name"),
-        "price": data.get("price"),
+        "name": name,
+        "price": price,
         #"duration": data.get("duration"),
-        "commission": data.get("commission"),
-        "category": data.get("category"),
+        "commission": commission,
+        "category": category
     }
     
-    #Se le pasa el diccionario al serializador para crear el objeto
-    serializer = serviceSerializer(data=service_data)
-    if serializer.is_valid():
-        try:
-            service = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        service = Service.objects.create(**service_data)
+        service.save()
+        return Response(
+            {
+                "message": "Servicio creado con éxito."
+            }, status=status.HTTP_201_CREATED)
+            
+    except:
+        return Response(
+            {"error": "No se pudo crear el servicio."}, status=status.HTTP_400_BAD_REQUEST
+        )
+    
     
 #ACTUALIZAR SERVICIO
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def update_service(request):
-    
+    id = request.data.get("service_id")
+    print(id)
     try:
-        #Se obtiene el id del servicio y se busca en la base de datos
-        service = Service.objects.get(id= request.query_params.get("service_id"))
+        service = Service.objects.get(id=id)
+        print(service)
     
-    except service.DoesNotExist:
+    except Service.DoesNotExist:
         #Si no existe un servicio con el id enviado se responde con un codigo 404
         return Response(
             {"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND
         )
         
     #Se obtiene los parametros enviados por parte del front
-    service_data= request.data
+    service_data = request.data
+    print(service_data)
     
     #Se actualiza el atributo correspondiente
     
@@ -69,7 +89,7 @@ def update_service(request):
         #service.duration = service_data["duration"]
         
     if "commission" in service_data:
-        service.commission = service_data["commission"]
+        service.commission = int(service_data["commission"]) / 100
     
     if "category" in service_data:
         service.category = service_data["category"]
@@ -89,12 +109,13 @@ def update_service(request):
 
 #ELIMINAR SERVICIO
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def delete_service(request):
-    
+    id = request.GET.get("idService")
+    print(id)
     try:
         #Se obtiene el id del servicio y se busca en la base de datos
-        service = Service.objects.get(id= request.query_params.get("service_id"))
+        service = Service.objects.get(id=id)
         
     except service.DoesNotExist:
         #Si no existe un servicio con el id enviado se responde con un codigo 404
@@ -115,12 +136,12 @@ def delete_service(request):
 
 #ENLISTAR SERVICIO
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 def list_service(request):
-    
+    services = None
     try:
         #Se obtienen todos los servicios que se encuentran en la base de datos
-        services= serviceSerializer.objects.all()
+        services = Service.objects.all()
         
     except services is None:
         #Si la lista es vacia, se devulve un mensaje informando que no hay servicios registrados
@@ -129,16 +150,40 @@ def list_service(request):
         )
 
     #Se crea un diccionario donde se mostrara la informacion de cada servicio
-    service_data=[
-        {
-            "Name": service.name,
-            "Price": service.price,
-            "Duration": service.duration,
-            "Commission": service.commission,
-            "Category": service.category
-        }
-        for service in services
-    ]
+    serializer = serviceSerializer(services, many=True)
 
     #Se envia la informacion y un codigo http 200
-    return Response(service_data, status=status.HTTP_200_OK)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+#@permission_classes([IsAuthenticated])  # Descomentar si necesitas autenticación
+def filter_by_category(request):
+    category = request.query_params.get("category")
+    if not category:
+        return Response( 
+            {"error": "No se ha especificado una categoría."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try: 
+        services = Service.objects.filter(category=category)
+        
+        if not services.exists():
+            return Response(
+                {"error": "No se encontraron servicios en la categoría especificada."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = serviceSerializer(services, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Service.DoesNotExist:
+        return Response(
+            {"error": "No se encontraron servicios en la categoría especificada."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error en el servidor: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
