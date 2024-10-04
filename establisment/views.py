@@ -1,3 +1,4 @@
+import datetime
 from .models import Establisment
 import base64
 import json
@@ -18,7 +19,7 @@ def createEstablisment(request):
         city = data.get('city')
         contact_methods = data.get('contact_methods')
 
-        if not name or not address or not city or contact_methods is None or not services_ids:
+        if not name or not address or not city or contact_methods is None:
             return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
 
         establisment = Establisment.objects.create(
@@ -100,36 +101,67 @@ def get_establisment(request, establisment_id):
 @api_view(['GET'])
 def get_filter_payments_service(request, establisment_id):
     try:
+        # Obtén el año y el mes de los parámetros de consulta
+        year = request.GET.get('year')
+        month = request.GET.get('month')
+        
+        # Verifica que los parámetros de año y mes están presentes
+        if not year or not month:
+            return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
+        
+        # Busca el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
-        appointments = Appointment.objects.filter(establisment=establisment, estate=False)
+        
+        # Filtra las citas por el establecimiento, estado, año y mes
+        appointments = Appointment.objects.filter(
+            establisment=establisment,
+            estate=False,
+            date__year=year,
+            date__month=month
+        )
         
         if not appointments.exists():
             return JsonResponse({'error': 'No appointments found'}, status=404)
         
-        employee = Employee.objects.get(schedule=appointments.first().schedule.id)
-        
         total = 0
-        services_list = []
+        total_comission = 0
+        services_list = []  
         
         for appointment in appointments:
+            employee = Employee.objects.get(schedule=appointment.schedule.id)
+            appointment_services = []  
+            
             for service in appointment.services.all():
                 comission = EmployeeServices.objects.get(employee=employee, service=service)
-                total += appointment.payment.total - (service.price * comission.commission)
-                services_list.append(service.name)
+                comissionF = service.price * comission.commission
+                total_comission += comissionF
+                final_price_service = service.price - comissionF
+                total += final_price_service
+                
+                appointment_services.append({
+                    'service_name': service.name,
+                    'service_price': service.price,
+                    'commission_percentage': comission.commission,
+                    'final_price_service': final_price_service
+                })
+                
+            services_list.append({
+                'appointment_id': appointment.id,
+                'client': appointment.client.user.username,
+                'services': appointment_services
+            })
         
         return JsonResponse({
-            'services': services_list,
-            'employee': employee.user.username,
-            'total': total
+            'ganancia_establecimiento': total,
+            'ganancia_employee': total_comission,
+            'appointments_services': services_list
         }, status=200)
-    
+
     except Establisment.DoesNotExist:
-        return JsonResponse({'error': 'Establisment not found'}, status=404)
-    except Appointment.DoesNotExist:
-        return JsonResponse({'error': 'Appointment not found'}, status=404)
-    except Employee.DoesNotExist:
-        return JsonResponse({'error': 'Employee not found'}, status=404)
+        return JsonResponse({'error': 'No establisment found'}, status=404)
     except EmployeeServices.DoesNotExist:
         return JsonResponse({'error': 'Employee service not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+    
