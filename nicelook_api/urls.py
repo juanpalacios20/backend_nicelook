@@ -27,4 +27,6 @@ urlpatterns = [
     path('register/admin/', views.register, name='register_admin'),
     path('login/admin/', views.loginAdmin, name='login_admin'),
     path('Product/add/', views.addProduct, name='add_product'),
+    path('Product/getAll/', views.getProducts, name='get_products'),
+    path('Product/update/', views.updateProduct, name='update_product'),
 ]

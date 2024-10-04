@@ -8,6 +8,7 @@ from administrator.models import Administrator
 from product.models import Product
 from establisment.models import Establisment
 from django.middleware.csrf import get_token
+from product.serializers import productSerializer
 
 @api_view(['POST'])
 def register(request):
@@ -82,6 +83,56 @@ def addProduct(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
+@api_view(['GET'])
+def getProducts(request):
+    try:
+        products = Product.objects.all()
+        serializer = productSerializer(products, many=True)
+        return Response({'products': serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PATCH'])
+def updateProduct(request):
+    try:
+        product_id = request.data.get('product_id')
+        name = request.data.get('name')
+        description = request.data.get('description')
+        price = request.data.get('price')
+        brand = request.data.get('brand')
+        distributor = request.data.get('distributor')
+        entry_date = request.data.get('entry_date')
+        expiration_date = request.data.get('expiration_date')
+        quantity = request.data.get('quantity')
+        estate = request.data.get('estate')
+        discount = request.data.get('discount')
+        
+        product = Product.objects.get(id=product_id)
+        
+        if name:
+            product.name = name
+        if description:
+            product.description = description
+        if price:
+            product.price = price
+        if brand:
+            product.brand = brand
+        if distributor:
+            product.distributor = distributor
+        if entry_date:
+            product.entry_date = entry_date
+        if expiration_date:
+            product.expiration_date = expiration_date
+        if quantity:
+            product.quantity = quantity
+        if estate:
+            product.estate = estate
+        if discount:
+            product.discount = discount
+        product.save()
+        return Response({'message': 'Product updated successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
     
 
