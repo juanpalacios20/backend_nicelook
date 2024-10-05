@@ -145,12 +145,15 @@ def get_filter_payments_service(request, establisment_id):
                     'service_name': service.name,
                     'service_price': service.price,
                     'commission_percentage': comission.commission,
-                    'final_price_service': final_price_service
+                    'profit_establisment': final_price_service
                 })
                 
             services_list.append({
                 'appointment_id': appointment.id,
                 'client': appointment.client.user.username,
+                'total': appointment.payment.total,
+                'date': appointment.date,
+                'employee': employee.user.username,
                 'services': appointment_services
             })
         
@@ -200,7 +203,8 @@ def get_filter_payments_product(request, establisment_id):
             products_info = [] 
             
             for product in productpayment.products.all():
-                discount_price = product.price - (product.price * product.discount)  # Precio con descuento
+                discount = (product.price * product.discount)
+                discount_price = product.price - discount  # Precio con descuento
                 profit = (discount_price - product.purchase_price) * productpayment.quantity 
                 total_price = profit  # Precio total
                 total += total_price  # Sumar al total del establecimiento
@@ -209,8 +213,7 @@ def get_filter_payments_product(request, establisment_id):
                 products_info.append({
                     'product_name': product.name,
                     'product_price': product.price,
-                    'discount_price': discount_price,
-                    'purchase_price': product.purchase_price,
+                    'discount_price': discount,
                     'profit': profit,
                     'quantity': productpayment.quantity,
                     'brand': product.brand,
@@ -221,6 +224,10 @@ def get_filter_payments_product(request, establisment_id):
             product_list.append({
                 'payment_id': productpayment.id,
                 'client': productpayment.client.user.username,
+                'total': productpayment.total,
+                'date': productpayment.date,
+                'method': productpayment.method,
+                'quantity': productpayment.quantity,
                 'products': products_info
             })
         
