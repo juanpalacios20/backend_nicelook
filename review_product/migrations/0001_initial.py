@@ -10,18 +10,18 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('client', '0001_initial'),
-        ('establisment', '0001_initial'),
+        ('product', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Review',
+            name='ReviewProduct',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('comment', models.CharField(max_length=500)),
                 ('rating', models.FloatField()),
                 ('autor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='client.client')),
-                ('establisment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='establisment.establisment')),
+                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='product.product')),
             ],
         ),
     ]

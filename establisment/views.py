@@ -1,4 +1,6 @@
 import datetime
+
+from product.models import Product
 from .models import Establisment
 import base64
 import json
@@ -8,6 +10,7 @@ from service.models import Service
 from appointment.models import Appointment
 from employee.models import Employee
 from employee_services.models import EmployeeServices
+from product_payment.models import Product_payment
 
 # Create your views here.
 @api_view(['POST'])
@@ -165,3 +168,71 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': str(e)}, status=500)
 
     
+@api_view(['GET'])
+def get_filter_payments_product(request, establisment_id):
+    try:
+        # Obtener año y mes de la consulta
+        year = request.GET.get('year')
+        month = request.GET.get('month')
+
+        if not year or not month:
+            return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
+
+        # Buscar el establecimiento
+        establisment = Establisment.objects.get(id=establisment_id)
+
+        # Filtrar los pagos de productos por establecimiento, estado, año y mes
+        productPayments = Product_payment.objects.filter(
+            establisment=establisment,
+            state=False,
+            date__year=year,
+            date__month=month
+        )
+        
+        if not productPayments.exists():
+            return JsonResponse({'error': 'No product payments found'}, status=404)
+        
+        total = 0
+        product_list = []  
+        
+        # Iterar sobre los pagos de productos
+        for productpayment in productPayments:
+            products_info = [] 
+            
+            for product in productpayment.products.all():
+                discount_price = product.price - (product.price * product.discount)  # Precio con descuento
+                profit = (discount_price - product.purchase_price) * productpayment.quantity 
+                total_price = profit  # Precio total
+                total += total_price  # Sumar al total del establecimiento
+                
+                # Añadir la información del producto
+                products_info.append({
+                    'product_name': product.name,
+                    'product_price': product.price,
+                    'discount_price': discount_price,
+                    'purchase_price': product.purchase_price,
+                    'profit': profit,
+                    'quantity': productpayment.quantity,
+                    'brand': product.brand,
+                    'estate': product.estate
+                })
+                
+            # Añadir la información del pago y los productos a la lista general
+            product_list.append({
+                'payment_id': productpayment.id,
+                'client': productpayment.client.user.username,
+                'products': products_info
+            })
+        
+        # Devolver la ganancia del establecimiento y la lista de productos con los detalles
+        return JsonResponse({
+            'ganancia_establecimiento': total,
+            'product_payments': product_list
+        }, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'No establisment found'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Product not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

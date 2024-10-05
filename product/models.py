@@ -14,6 +14,7 @@ class Product (models.Model):
     quantity = models.IntegerField()
     estate = models.BooleanField()
     discount = models.FloatField()
+    purchase_price = models.FloatField()
 
     
     def __str__ (self):
