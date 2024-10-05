@@ -1,11 +1,6 @@
-from django.contrib import admin
-from django.urls import path ,include
-from . import views
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-router.register('employee', views.employeeViewSet, 'employee.views')   
+from django.urls import path 
+from .views import get_payment_employee
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('get-payment-employee/<int:establisment_id>/', get_payment_employee, name='get-payment-employee'),
 ]
