@@ -16,15 +16,11 @@ def upload_logo(request, establisment_id):
     image = Image.objects.filter(establisment=establisment, code=1).first()
     #image es el campo que contiene la imagen que quieres subir para el logo
     if image:
-        try:        
-            image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
-            if not image_obj:
-                return JsonResponse({'error': 'Logo no encontrado'}, status=404)    
-            #image es el campo que recibe de la peticion     
+        try:     
             new_image = request.FILES.get('image')
             if new_image:
-               image_obj.image = new_image.read()
-            image_obj.save()
+               image.image = new_image.read()
+            image.save()
             return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
         except Establisment.DoesNotExist:
             return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
@@ -103,15 +99,11 @@ def upload_banner(request, establisment_id):
     establisment = Establisment.objects.get(id=establisment_id)
     image = Image.objects.filter(establisment=establisment, code=2).first()
     if image:
-        try:        
-            image_obj = Image.objects.filter(establisment=establisment_id, code=2).first()
-            if not image_obj:
-                return JsonResponse({'error': 'Banner no encontrado'}, status=404)    
-            #image es el campo que recibe de la peticion     
+        try:     
             new_image = request.FILES.get('image')
             if new_image:
-               image_obj.image = new_image.read()
-            image_obj.save()
+               image.image = new_image.read()
+            image.save()
             return JsonResponse({'mensaje': 'Banner actualizado exitosamente'}, status=200)
         except Establisment.DoesNotExist:
             return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
@@ -120,7 +112,6 @@ def upload_banner(request, establisment_id):
             return JsonResponse({'error': str(e)}, status=500)    
         
     image_file = request.FILES.get('image')
-
     if not image_file:
         return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
     #según mi planteamiento, 1 es para el logo y 2 es para el banner
