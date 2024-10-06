@@ -99,12 +99,10 @@ def delete_logo(request, establisment_id):
     
 @api_view(['POST'])
 def upload_banner(request, establisment_id):
+    
     establisment = Establisment.objects.get(id=establisment_id)
-    banenr = Image.objects.filter(establisment=establisment, code=2).first()
-    #image es el campo que contiene la imagen que quieres subir para el banner
-    image_file = request.FILES.get('image')
-
-    if banenr:
+    image = Image.objects.filter(establisment=establisment, code=2).first()
+    if image:
         try:        
             image_obj = Image.objects.filter(establisment=establisment_id, code=2).first()
             if not image_obj:
@@ -119,12 +117,13 @@ def upload_banner(request, establisment_id):
             return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
         except Exception as e:
             print(f"Error: {str(e)}")  
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'error': str(e)}, status=500)    
+        
+    image_file = request.FILES.get('image')
+
     if not image_file:
         return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
-
-    description = request.POST.get('description', '')
-    #segun mi planteamiento, 1 es para el logo y 2 es para el banner
+    #según mi planteamiento, 1 es para el logo y 2 es para el banner
     code = 2
 
     Image.objects.create(
@@ -132,10 +131,11 @@ def upload_banner(request, establisment_id):
         image=image_file.read(),
         description="banner",
         code=code,
+        #segun mi planteamiento, en logo y banner no hay categoría ni tipo
         category=None,
-        Type=None,
-        )
-
+        type=None,
+    )
+    
     return JsonResponse({'mensaje': 'Imagen subida exitosamente'}, status=201)
 
 @api_view(['GET'])
@@ -154,7 +154,7 @@ def get_banner(request, establisment_id):
 
         return JsonResponse({
             'image_base64': image_base64_url,
-            'description': image_obj.descripcion,
+            'description': image_obj.description,
         }, status=200)
 
     except Exception as e:
