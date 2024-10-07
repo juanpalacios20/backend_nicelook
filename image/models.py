@@ -10,4 +10,4 @@ class Image(models.Model):
     type = models.CharField(max_length=50, null=True)
 
     def __str__(self):
-        return f"Imagen de {self.Establisment.name}"
+        return f"Imagen de {self.establisment.name}"
