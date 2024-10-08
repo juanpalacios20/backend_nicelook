@@ -134,6 +134,16 @@ def updateProduct(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
+@api_view(['DELETE'])
+def deleteProduct(request):
+    try:
+        product_id = request.data.get('product_id')
+        product = Product.objects.get(id=product_id)
+        product.delete()
+        return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
     
 
 
