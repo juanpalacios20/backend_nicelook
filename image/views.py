@@ -15,16 +15,21 @@ def upload_logo(request, establisment_id):
     establisment = Establisment.objects.get(id=establisment_id)
     image = Image.objects.filter(establisment=establisment, code=1).first()
     #image es el campo que contiene la imagen que quieres subir para el logo
-    if image:   
-            new_image = request.data.get('image')
-            image_bytes = new_image.encode('utf-8')
+    if image:
+        try:     
+            new_image = request.FILES.get('image')
             if new_image:
-               image.image = image_bytes
+               image.image = new_image.read()
             image.save()
-            return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)   
+            return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)
+        except Establisment.DoesNotExist:
+            return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+        except Exception as e:
+            print(f"Error: {str(e)}")  
+            return JsonResponse({'error': str(e)}, status=500)    
         
-    image_file = request.data.get('image')
-    image_bytes = image_file.encode('utf-8')
+    image_file = request.FILES.get('image')
+
     if not image_file:
         return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
     #según mi planteamiento, 1 es para el logo y 2 es para el banner
@@ -32,7 +37,7 @@ def upload_logo(request, establisment_id):
 
     Image.objects.create(
         establisment=establisment,
-        image=image_bytes,
+        image=image_file.read(),
         description="logo",
         code=code,
         #segun mi planteamiento, en logo y banner no hay categoría ni tipo
@@ -45,18 +50,22 @@ def upload_logo(request, establisment_id):
 @api_view(['GET'])
 def get_logo(request, establisment_id):
     try:
-        # filtra el logo del establecimiento
+        #filtra el logo del establecimiento
         image_obj = Image.objects.filter(establisment=establisment_id, code=1).first()
-
+        
         if not image_obj:
             return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
-        # convierte el binario a string
-        image_binary = image_obj.image.tobytes()
-        image_string = image_binary.decode('utf-8')
+        #convierte la imagen binaria a base64
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+
+        #convierte la imagen base64 a url
+        mime_type = "image/jpeg"
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
 
         return JsonResponse({
-            'imagen': image_string,
+            'imagen_base64': image_base64_url,
             'descripcion': image_obj.description,
         }, status=200)
 
@@ -86,28 +95,31 @@ def delete_logo(request, establisment_id):
     
 @api_view(['POST'])
 def upload_banner(request, establisment_id):
-        
+    
     establisment = Establisment.objects.get(id=establisment_id)
     image = Image.objects.filter(establisment=establisment, code=2).first()
-    #image es el campo que contiene la imagen que quieres subir para el logo
-    if image:   
-            new_image = request.data.get('image')
-            image_bytes = new_image.encode('utf-8')
+    if image:
+        try:     
+            new_image = request.FILES.get('image')
             if new_image:
-               image.image = image_bytes
+               image.image = new_image.read()
             image.save()
-            return JsonResponse({'mensaje': 'Logo actualizado exitosamente'}, status=200)   
+            return JsonResponse({'mensaje': 'Banner actualizado exitosamente'}, status=200)
+        except Establisment.DoesNotExist:
+            return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+        except Exception as e:
+            print(f"Error: {str(e)}")  
+            return JsonResponse({'error': str(e)}, status=500)    
         
-    image_file = request.data.get('image')
-    image_bytes = image_file.encode('utf-8')
+    image_file = request.FILES.get('image')
     if not image_file:
         return JsonResponse({'error': 'No se ha proporcionado ninguna imagen'}, status=400)
     #según mi planteamiento, 1 es para el logo y 2 es para el banner
-    code = 1
+    code = 2
 
     Image.objects.create(
         establisment=establisment,
-        image=image_bytes,
+        image=image_file.read(),
         description="banner",
         code=code,
         #segun mi planteamiento, en logo y banner no hay categoría ni tipo
@@ -120,19 +132,20 @@ def upload_banner(request, establisment_id):
 @api_view(['GET'])
 def get_banner(request, establisment_id):
     try:
-        # filtra el logo del establecimiento
         image_obj = Image.objects.filter(establisment=establisment_id, code=2).first()
 
         if not image_obj:
             return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
-        # convierte el binario a string
-        image_binary = image_obj.image.tobytes()
-        image_string = image_binary.decode('utf-8')
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+
+        mime_type = "image/jpeg" 
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
 
         return JsonResponse({
-            'imagen': image_string,
-            'descripcion': image_obj.description,
+            'image_base64': image_base64_url,
+            'description': image_obj.description,
         }, status=200)
 
     except Exception as e:
@@ -146,12 +159,12 @@ def delete_banner(request, establisment_id):
             image_obj = Image.objects.filter(establisment=establisment, code=2).first()
 
             if not image_obj:
-                return JsonResponse({'error': 'Logo no encontrado'}, status=404)
+                return JsonResponse({'error': 'Banner no encontrado'}, status=404)
 
             # Eliminar el logo
             image_obj.delete()
 
-            return JsonResponse({'mensaje': 'Logo eliminado exitosamente'}, status=200)
+            return JsonResponse({'mensaje': 'Banner eliminado exitosamente'}, status=200)
 
         except Establisment.DoesNotExist:
             return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
