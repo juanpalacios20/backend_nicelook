@@ -107,20 +107,23 @@ def get_filter_payments_service(request, establisment_id):
         # Obtén el año y el mes de los parámetros de consulta
         year = request.GET.get('year')
         month = request.GET.get('month')
+        day = request.GET.get('day')
         
         # Verifica que los parámetros de año y mes están presentes
         if not year or not month:
-            return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
+            return JsonResponse({'error': 'Year, month and day are required parameters'}, status=400)
         
         # Busca el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
+        state = "Completada"
         
         # Filtra las citas por el establecimiento, estado, año y mes
         appointments = Appointment.objects.filter(
             establisment=establisment,
-            estate="Completada",
+            estate__icontains=state,
             date__year=year,
-            date__month=month
+            date__month=month,
+            date__day = day
         )
         
         if not appointments.exists():
@@ -177,6 +180,7 @@ def get_filter_payments_product(request, establisment_id):
         # Obtener año y mes de la consulta
         year = request.GET.get('year')
         month = request.GET.get('month')
+        day = request.GET.get('day')
 
         if not year or not month:
             return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
@@ -189,7 +193,8 @@ def get_filter_payments_product(request, establisment_id):
             establisment=establisment,
             state=False,
             date__year=year,
-            date__month=month
+            date__month=month,
+            date__day=day
         )
         
         if not productPayments.exists():
