@@ -118,7 +118,7 @@ def get_filter_payments_service(request, establisment_id):
         # Filtra las citas por el establecimiento, estado, año y mes
         appointments = Appointment.objects.filter(
             establisment=establisment,
-            estate=False,
+            estate="Completada",
             date__year=year,
             date__month=month
         )
