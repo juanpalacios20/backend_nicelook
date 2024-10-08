@@ -12,7 +12,7 @@ class Appointment (models.Model):
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
     date = models.DateField()
     time = models.DateTimeField()
-    estate = models.BooleanField()
+    estate = models.CharField(max_length=50)
     client = models.ForeignKey(Client, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
