@@ -1,8 +1,6 @@
 from datetime import timedelta
 from django.db import models
 from establisment.models import Establisment
-
-from establisment.models import Establisment
 from category.models import Category
 # Create your models here.
 

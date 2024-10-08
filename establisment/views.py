@@ -131,12 +131,12 @@ def get_filter_payments_service(request, establisment_id):
         services_list = []  
         
         for appointment in appointments:
-            employee = Employee.objects.get(schedule=appointment.schedule.id)
+            employee = Employee.objects.get(id=appointment.employee.id)
             appointment_services = []  
             
             for service in appointment.services.all():
                 comission = EmployeeServices.objects.get(employee=employee, service=service)
-                comissionF = service.price * comission.commission
+                comissionF = service.price * (comission.commission / 100)
                 total_comission += comissionF
                 final_price_service = service.price - comissionF
                 total += final_price_service
@@ -203,7 +203,7 @@ def get_filter_payments_product(request, establisment_id):
             products_info = [] 
             
             for product in productpayment.products.all():
-                discount = (product.price * product.discount)
+                discount = (product.price * (product.discount / 100))
                 discount_price = product.price - discount  # Precio con descuento
                 profit = (discount_price - product.purchase_price) * productpayment.quantity 
                 total_price = profit  # Precio total
