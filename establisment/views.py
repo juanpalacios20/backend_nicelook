@@ -108,6 +108,13 @@ def get_filter_payments_service(request, establisment_id):
         year = request.GET.get('year')
         month = request.GET.get('month')
         day = request.GET.get('day')
+                
+        total_comission = 0
+        services_list = [] 
+        ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        total_day = 0
+        
+        state = "Completada"
         
         # Verifica que los parámetros de año y mes están presentes
         if not year or not month:
@@ -115,53 +122,53 @@ def get_filter_payments_service(request, establisment_id):
         
         # Busca el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
-        state = "Completada"
         
         # Filtra las citas por el establecimiento, estado, año y mes
         appointments = Appointment.objects.filter(
             establisment=establisment,
             estate__icontains=state,
-            date__year=year,
-            date__month=month,
-            date__day = day
+            date__year=year
         )
         
         if not appointments.exists():
-            return JsonResponse({'error': 'No appointments found'}, status=404)
-        
-        total = 0
-        total_comission = 0
-        services_list = []  
+            return JsonResponse({'error': 'No appointments found'}, status=404) 
         
         for appointment in appointments:
             employee = Employee.objects.get(id=appointment.employee.id)
             appointment_services = []  
+            total = 0
             
             for service in appointment.services.all():
                 comission = EmployeeServices.objects.get(employee=employee, service=service)
                 comissionF = service.price * (comission.commission / 100)
-                total_comission += comissionF
                 final_price_service = service.price - comissionF
                 total += final_price_service
                 
-                appointment_services.append({
-                    'service_name': service.name,
-                    'service_price': service.price,
-                    'commission_percentage': comission.commission,
-                    'profit_establisment': final_price_service
+                if appointment.date.day == int(day):
+                    total_day += final_price_service
+                    total_comission += comissionF
+                    appointment_services.append({
+                        'service_name': service.name,
+                        'service_price': service.price,
+                        'commission_percentage': comission.commission,
+                        'profit_establisment': final_price_service
                 })
-                
-            services_list.append({
-                'appointment_id': appointment.id,
-                'client': appointment.client.user.username,
-                'total': appointment.payment.total,
-                'date': appointment.date,
-                'employee': employee.user.username,
-                'services': appointment_services
+                    services_list.append({
+                        'appointment_id': appointment.id,
+                        'client': appointment.client.user.username,
+                        'total': appointment.payment.total,
+                        'date': appointment.date,
+                        'employee': employee.user.username,
+                        'services': appointment_services
             })
+            ganancias_meses[int(appointment.date.month)-1] += total
+                      
+        total_year = sum(ganancias_meses)
         
         return JsonResponse({
-            'ganancia_establecimiento': total,
+            'ganancias_meses': ganancias_meses[int(month)-1],
+            'ganancias_año': total_year,
+            'ganancia_establecimiento': total_day,
             'ganancia_employee': total_comission,
             'appointments_services': services_list
         }, status=200)
@@ -181,9 +188,13 @@ def get_filter_payments_product(request, establisment_id):
         year = request.GET.get('year')
         month = request.GET.get('month')
         day = request.GET.get('day')
+                
+        product_list = [] 
+        profit_months = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        total_day = 0
 
-        if not year or not month:
-            return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
+        if not year or not month or not day:
+            return JsonResponse({'error': 'Year, month and day are required parameters'}, status=400)
 
         # Buscar el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
@@ -192,53 +203,52 @@ def get_filter_payments_product(request, establisment_id):
         productPayments = Product_payment.objects.filter(
             establisment=establisment,
             state=False,
-            date__year=year,
-            date__month=month,
-            date__day=day
+            date__year=year
         )
         
         if not productPayments.exists():
-            return JsonResponse({'error': 'No product payments found'}, status=404)
-        
-        total = 0
-        product_list = []  
+            return JsonResponse({'error': 'No product payments found'}, status=404)  
         
         # Iterar sobre los pagos de productos
         for productpayment in productPayments:
             products_info = [] 
+            total = 0
             
             for product in productpayment.products.all():
                 discount = (product.price * (product.discount / 100))
                 discount_price = product.price - discount  # Precio con descuento
                 profit = (discount_price - product.purchase_price) * productpayment.quantity 
-                total_price = profit  # Precio total
-                total += total_price  # Sumar al total del establecimiento
+                total += profit
                 
-                # Añadir la información del producto
-                products_info.append({
-                    'product_name': product.name,
-                    'product_price': product.price,
-                    'discount_price': discount,
-                    'profit': profit,
+                if productpayment.date.day == int(day):
+                    total_day += profit
+                    products_info.append({
+                        'product_name': product.name,
+                        'product_price': product.price,
+                        'discount_price': discount,
+                        'profit': profit,
+                        'quantity': productpayment.quantity,
+                        'brand': product.brand,
+                        'estate': product.estate
+                    })
+                    product_list.append({
+                    'payment_id': productpayment.id,
+                    'client': productpayment.client.user.username,
+                    'total': productpayment.total,
+                    'date': productpayment.date,
+                    'method': productpayment.method,
                     'quantity': productpayment.quantity,
-                    'brand': product.brand,
-                    'estate': product.estate
+                    'products': products_info
                 })
-                
+            profit_months[int(productpayment.date.month)-1] += total 
             # Añadir la información del pago y los productos a la lista general
-            product_list.append({
-                'payment_id': productpayment.id,
-                'client': productpayment.client.user.username,
-                'total': productpayment.total,
-                'date': productpayment.date,
-                'method': productpayment.method,
-                'quantity': productpayment.quantity,
-                'products': products_info
-            })
         
         # Devolver la ganancia del establecimiento y la lista de productos con los detalles
+        profit_year = sum(profit_months)
         return JsonResponse({
-            'ganancia_establecimiento': total,
+            'ganancia_meses': profit_months[int(month)-1],
+            'ganancia_año': profit_year,
+            'ganancia_establecimiento': total_day,
             'product_payments': product_list
         }, status=200)
 
