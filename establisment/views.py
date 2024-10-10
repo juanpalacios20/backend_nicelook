@@ -151,7 +151,8 @@ def get_filter_payments_service(request, establisment_id):
                         'service_name': service.name,
                         'service_price': service.price,
                         'commission_percentage': comission.commission,
-                        'profit_establisment': final_price_service})
+                        'profit_establisment': final_price_service,
+                        'time': appointment.time})
                     services_list.append({
                         'appointment_id': appointment.id,
                         'client': appointment.client.user.username,
