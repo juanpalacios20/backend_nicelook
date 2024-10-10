@@ -144,15 +144,14 @@ def get_filter_payments_service(request, establisment_id):
                 final_price_service = service.price - comissionF
                 total += final_price_service
                 
-                if appointment.date.day == int(day):
+                if appointment.date.day == int(day) and appointment.date.month == int(month) and appointment.date.year == int(year):
                     total_day += final_price_service
                     total_comission += comissionF
                     appointment_services.append({
                         'service_name': service.name,
                         'service_price': service.price,
                         'commission_percentage': comission.commission,
-                        'profit_establisment': final_price_service
-                })
+                        'profit_establisment': final_price_service})
                     services_list.append({
                         'appointment_id': appointment.id,
                         'client': appointment.client.user.username,
@@ -220,7 +219,7 @@ def get_filter_payments_product(request, establisment_id):
                 profit = (discount_price - product.purchase_price) * productpayment.quantity 
                 total += profit
                 
-                if productpayment.date.day == int(day):
+                if productpayment.date.day == int(day) and productpayment.date.month == int(month) and productpayment.date.year == int(year):
                     total_day += profit
                     products_info.append({
                         'product_name': product.name,
