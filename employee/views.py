@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import render
 from rest_framework import viewsets
-from employee_services.models import EmployeeServices
+from product_payment.models import Product_payment
 from appointment.models import Appointment
 from establisment.models import Establisment
 from schedule.models import Schedule
@@ -20,55 +20,105 @@ def get_payment_employee(request, establisment_id):
     try:
         year = request.GET.get('year')
         month = request.GET.get('month')
+        day = request.GET.get('day')
         
-        if not year or not month:
+        if not year or not month or not day:
             return JsonResponse({'error': 'Year and month are required parameters'}, status=400)
         
-        # Obtener el establecimiento y verificar si existe
-        try:
-            establisment = Establisment.objects.get(id=establisment_id)
-        except Establisment.DoesNotExist:
-            return JsonResponse({'error': 'Establishment not found'}, status=404)
+        establisment = Establisment.objects.get(id=establisment_id)
+
         
-        # Filtrar los horarios y empleados relacionados con el establecimiento
-        schedules = Schedule.objects.filter(establisment=establisment)
-        employees = Employee.objects.filter(schedule__in=schedules)
+        employees = Employee.objects.filter(establisment=establisment)
         
         # Filtrar las citas por el establecimiento y el mes y año indicados
-        appointments = Appointment.objects.filter(
-            establisment=establisment, 
-            estate=False, 
-            date__year=year, 
-            date__month=month
-        )
         
         employee_list = []
         
         # Iterar sobre los empleados y calcular ganancias
         for employee in employees:
             profit_employee = 0
+            appointments = Appointment.objects.filter(
+            establisment=establisment, 
+            estate__icontains="Completada", 
+            date__year=year, 
+            date__month=month,
+            date__day=day,
+            employee=employee
+        )
             for appointment in appointments:
-                if appointment.schedule.id == employee.schedule.id:
-                    for service in appointment.services.all():  # Corregir `service.all()` a `services.all()`
-                        try:
-                            # Obtener la comisión para este empleado y servicio
-                            comission = EmployeeServices.objects.get(employee=employee, service=service)
-                            profit = service.price * comission.commission
-                            profit_employee += profit
-                        except EmployeeServices.DoesNotExist:
-                            return JsonResponse({'error': f'Commission data not found for employee {employee.id} and service {service.id}'}, status=404)
-
-            # Agregar al empleado al listado final con sus ganancias totales
+                for service in appointment.services.all():
+                    profit = service.price - (service.price * service.commission/100)
+                    profit_employee += profit
             employee_list.append({
-                'id': employee.id,
+                'id': 1,
                 'name': employee.user.username,
                 'total_profit_month': profit_employee
-            })
+                    })
         
         # Devolver la lista de empleados con sus ganancias
         return JsonResponse({'employees': employee_list}, status=200)
     
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_services_most_sold(request, establisment_id):
+    
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+    day = request.GET.get('day')
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+        services_count = {}
+        services_response = []
+        appointments = Appointment.objects.filter(
+            establisment=establisment, 
+            estate__icontains="Completada", 
+            date__year=year, 
+            date__month=month)
+        for appointment in appointments:
+            for service in appointment.services.all():
+                service_name = service.name
+                if service_name in services_count:
+                    services_count[service_name] += 1
+                else:
+                    services_count[service_name] = 1
+        sorted_services = sorted(services_count.items(), key=lambda x: x[1], reverse=True)
+        top_3_services = sorted_services[:3]
+        for service in top_3_services:
+            services_response.append(f"{service[0]} = {service[1]}")
+        return JsonResponse({'services_most_sold': services_response}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_products_most_sold(request, establisment_id):
+    
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+    day = request.GET.get('day')
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+        products_count = {}
+        products_response = []
+        payments = Product_payment.objects.filter(
+            establisment=establisment, 
+            state=True, 
+            date__year=year, 
+            date__month=month)
+        for payment in payments:
+            for product in payment.products.all():
+                product_name = product.name
+                if product_name in products_count:
+                    products_count[product_name] += 1
+                else:
+                    products_count[product_name] = 1
+        sorted_products = sorted(products_count.items(), key=lambda x: x[1], reverse=True)
+        top_3_products = sorted_products[:3]
+        for product in top_3_products:
+            products_response.append(f"{product[0]} = {product[1]}")
+        return JsonResponse({'products_most_sold': products_response}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
