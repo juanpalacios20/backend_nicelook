@@ -9,6 +9,10 @@ from product.models import Product
 from establisment.models import Establisment
 from django.middleware.csrf import get_token
 from product.serializers import productSerializer
+from Image_product.models import ImageProduct
+import base64
+from django.http import JsonResponse
+
 
 @api_view(['POST'])
 def register(request):
@@ -144,6 +148,68 @@ def deleteProduct(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
+
+@api_view(['POST'])
+def uploadImage(request):
+    try:
+        id_establisment = request.data.get('id_establisment')
+        id_product = request.data.get('id_product')
+        image = request.FILES.get('image')
+        imageField = image.read()
+
+        ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
+                                    id_product=Product.objects.get(id=id_product),
+                                    image=imageField)
+        return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def getImageProduct(request):
+    try:
+        id_product = request.data.get('id_product')
+        id_establisment = request.data.get('id_establisment')
+        imagesList = []
+
+        image = ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product))
+        for image in image:
+            imageBase64 = base64.b64encode(image.image).decode('utf-8')
+            mime_type = "image/jpeg"
+            image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+            imagesList.append({"imagen": image_base64_url})
+        
+        return JsonResponse({'imagenes': imagesList})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['PATCH'])
+def updateImageProduct(request):
+    try:
+        id_establisment = request.data.get('id_establisment')
+        id_product = request.data.get('id_product')
+        id_image = request.data.get('id_image')
+        image = request.FILES.get('image')
+        imageField = image.read()
+
+        imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product), id=id_image)
+        imageProduct.image = imageField
+        imageProduct.save()
+        return Response({'message': 'Image updated successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def deleteImageProduct(request):
+    try:
+        id_establisment = request.data.get('id_establisment')
+        id_product = request.data.get('id_product')
+        id_image = request.data.get('id_image')
+        imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product), id=id_image)
+        imageProduct.delete()
+        return Response({'message': 'Image deleted successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 
 

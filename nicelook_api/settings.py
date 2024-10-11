@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',  # Proveedor de Google
     'dj_rest_auth',
     'dj_rest_auth.registration',
+    'Image_product',
     
     
 ]
