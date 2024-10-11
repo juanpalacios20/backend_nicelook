@@ -219,12 +219,9 @@ def get_filter_payments_product(request, establisment_id):
             for product in productpayment.products.all():
                 discount = (product.price * (product.discount / 100))
                 discount_price = product.price - discount  # Precio con descuento
-                profit = (discount_price - product.purchase_price) * productpayment.quantity 
+                profit = (product.purchase_price - discount_price) * productpayment.quantity 
                 total += profit
-                
-                if productpayment.date.day == int(day) and productpayment.date.month == int(month) and productpayment.date.year == int(year):
-                    total_day += profit
-                    products_info.append({
+                products_info.append({
                         'product_name': product.name,
                         'product_price': product.price,
                         'discount_price': discount,
@@ -233,7 +230,10 @@ def get_filter_payments_product(request, establisment_id):
                         'brand': product.brand,
                         'estate': product.estate
                     })
-                    product_list.append({
+                
+            if productpayment.date.day == int(day) and productpayment.date.month == int(month) and productpayment.date.year == int(year):
+                total_day += profit
+                product_list.append({
                     'payment_id': productpayment.id,
                     'client': productpayment.client.user.username,
                     'total': productpayment.total,
@@ -242,7 +242,7 @@ def get_filter_payments_product(request, establisment_id):
                     'quantity': productpayment.quantity,
                     'products': products_info
                 })
-            profit_months[int(productpayment.date.month)-1] += total 
+        profit_months[int(productpayment.date.month)-1] += total 
             # Añadir la información del pago y los productos a la lista general
         
         # Devolver la ganancia del establecimiento y la lista de productos con los detalles
