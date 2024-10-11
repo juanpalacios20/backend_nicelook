@@ -8,7 +8,7 @@ router.register('employee', views.employeeViewSet, 'employee.views')
 
 urlpatterns = [
     path('all/', include(router.urls)),
-    path('create_employee/', views.create_employee, name='create_employee'),
+    path('create_employee/<int:establisment_id>/', views.create_employee, name='create_employee'),
     path('get_employees/', views.get_employees, name='get_employees'),
     path('delete_employee/', views.delete_employee, name='delete_employee'),
     path('employee_list/', views.employee_list, name='employee_list'),
