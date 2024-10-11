@@ -3,9 +3,12 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from employee_image.models import EmployeeImage
 from schedule.models import Schedule
 from employee.models import Employee
+from establisment.models import Establisment
 from employee.serializers import EmployeeSerializer
+from django.http import JsonResponse
 import re
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -13,6 +16,8 @@ from django.db.models import Q
 from django.db.models import Max
 import string
 import secrets
+import base64
+from employee_image.models import EmployeeImage
 from django.db import transaction
 from category.models import Category
 # Create your views here.
@@ -175,12 +180,12 @@ random_password = generate_random_password(length=8)
     
 # Crear empleado, recibe los datos del empleado por el Body, ejemplo: /create_employee/
 @api_view(['POST'])
-def create_employee(request):
+def create_employee(request, establisment_id):
     # Datos del Usuario
     name = request.data.get('name')
     last_name = request.data.get('last_name')
     email = request.data.get('email')
-    password = request.data.get('password', None)
+    #password = request.data.get('password', None)
 
     # Datos del Empleado
     phone = request.data.get('phone')
@@ -205,6 +210,11 @@ def create_employee(request):
         phone = validate_phone(phone)
     except ValidationError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+    except Establisment.DoesNotExist:
+        return Response({'error': 'Establecimiento no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
 
     # Verificar si el email ya está registrado
@@ -248,7 +258,8 @@ def create_employee(request):
                 schedule=schedule if schedule is not None else None,  # Puede ser None
                 googleid=googleid,
                 token=token,
-                accestoken=accestoken
+                accestoken=accestoken,
+                establisment=establisment
             )
 
             # Asignar especialidades
@@ -259,3 +270,76 @@ def create_employee(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"success": "Empleado creado exitosamente"}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def upload_employee_photo(request, establisment_id, employee_id):
+
+    establisment = Establisment.objects.get(id=establisment_id)
+    employee = Employee.objects.get(id=employee_id)
+    image = EmployeeImage.objects.filter(establishment_id=establisment, employee_id=employee).first()
+    #image es el campo que contiene la imagen que quieres subir para el logo
+    if image:
+            new_image = request.FILES["image"]
+            if new_image:
+               image.image = new_image.read()
+            image.save()
+            return JsonResponse({'succes': 'The photo has been update successfully'}, status=200)
+
+    image_file = request.FILES["image"]
+
+    if not image_file:
+        return JsonResponse({'error': 'The image has not been provided'}, status=400)
+    #según mi planteamiento, 1 es para el logo y 2 es para el banner
+
+    EmployeeImage.objects.create(
+        establishment_id=establisment,
+        employee_id=employee,
+        image=image_file.read(),
+    )
+
+    return JsonResponse({'mensaje': 'The photo has been uploaded successfully'}, status=201)
+
+@api_view(['GET'])
+def get_photo(request, establisment_id, employee_id):
+    try:
+        #filtra el logo del establecimiento
+        image_obj = EmployeeImage.objects.filter(establishment_id=establisment_id, employee_id=employee_id ).first()
+
+        if not image_obj:
+            return JsonResponse({'error': 'Image not found'}, status=404)
+
+        #convierte la imagen binaria a base64
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+
+        #convierte la imagen base64 a url
+        mime_type = "image/jpeg"
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
+
+        return JsonResponse({
+            'imagen_base64': image_base64_url,
+        }, status=200)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['DELETE'])
+def delete_photo(request, establisment_id, employee_id):
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+        employee = Employee.objects.get(id=employee_id)
+        image_obj = EmployeeImage.objects.filter(establishment_id=establisment, employee_id=employee).first()
+
+        if not image_obj:
+            return JsonResponse({'error': 'Photo not found'}, status=404)
+
+
+        image_obj.delete()
+
+        return JsonResponse({'mensaje': 'Photo sucssefuly deleted'}, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establishment not found'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

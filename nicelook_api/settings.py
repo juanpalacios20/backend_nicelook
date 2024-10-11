@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'review_employee',
     'review_product', 
     'category',
+    'employee_image',
     
     
 ]

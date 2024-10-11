@@ -14,4 +14,7 @@ urlpatterns = [
     path('employee_list/', views.employee_list, name='employee_list'),
     path('search_employees/', views.search_employees, name='search_employees'),
     path('update_employee/', views.update_employee, name='update_employee'),
+    path('upload_employee_photo/<int:establisment_id>/<int:employee_id>/', views.upload_employee_photo, name='upload_employee_photo'),
+    path('get_photo/<int:establisment_id>/<int:employee_id>/', views.get_photo, name='get_employee_photo'),
+    path('delete_photo/<int:establisment_id>/<int:employee_id>/', views.delete_photo, name='delete_employee_photo'),
 ]
