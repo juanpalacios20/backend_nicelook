@@ -7,5 +7,5 @@ router = routers.DefaultRouter()
 router.register('establisment', views.establismentViewSet, 'establisment')   
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('all/', include(router.urls))
 ]

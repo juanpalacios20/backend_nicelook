@@ -7,5 +7,5 @@ router = routers.DefaultRouter()
 router.register('employee_services', views.employeeServicesViewSet, 'employee_services.views')   
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('all/', include(router.urls))
 ]
