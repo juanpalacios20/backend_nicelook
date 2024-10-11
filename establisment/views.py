@@ -109,9 +109,8 @@ def get_filter_payments_service(request, establisment_id):
         month = request.GET.get('month')
         day = request.GET.get('day')
         print(year, month, day)
-                
-        total_comission = 0
         services_list = [] 
+        total_comission = 0
         ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         total_day = 0
         
@@ -145,24 +144,24 @@ def get_filter_payments_service(request, establisment_id):
                 profit_establisment = service.price * (service.commission / 100)
                 profit_employee = service.price - profit_establisment
                 total += profit_establisment
+                appointment_services.append({
+                    'service_name': service.name,
+                    'service_price': service.price,
+                    'commission_percentage': service.commission,
+                    'profit_establisment': total,
+                    'time': appointment.time})
                 
-                if appointment.date.day == int(day) and appointment.date.month == int(month) and appointment.date.year == int(year):
-                    total_day += profit_establisment
-                    total_comission += profit_employee
-                    appointment_services.append({
-                        'service_name': service.name,
-                        'service_price': service.price,
-                        'commission_percentage': service.commission,
-                        'profit_establisment': profit_establisment,
-                        'time': appointment.time})
-                    services_list.append({
-                        'profit_establisment': profit_establisment,
-                        'appointment_id': appointment.id,
-                        'client': appointment.client.user.username,
-                        'total': appointment.payment.total,
-                        'date': appointment.date,
-                        'employee': employee.user.username,
-                        'services': appointment_services
+            if appointment.date.day == int(day) and appointment.date.month == int(month) and appointment.date.year == int(year):
+                total_day += profit_establisment
+                total_comission += profit_employee
+                services_list.append({
+                    'profit_establisment': total,
+                    'appointment_id': appointment.id,
+                    'client': appointment.client.user.username,
+                    'total': appointment.payment.total,
+                    'date': appointment.date,
+                    'employee': employee.user.username,
+                    'services': appointment_services
             })
             ganancias_meses[int(appointment.date.month)-1] += total
                       
