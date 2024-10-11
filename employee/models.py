@@ -1,10 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
+from establisment.models import Establisment
 from schedule.models import Schedule
 from category.models import Category
 # Create your models here.
 class Employee (models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
     code = models.IntegerField()
     phone = models.CharField(max_length=15)
     state = models.BooleanField()
