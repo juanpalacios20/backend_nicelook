@@ -155,6 +155,8 @@ def uploadImage(request):
         id_establisment = request.data.get('id_establisment')
         id_product = request.data.get('id_product')
         image = request.FILES.get('image')
+        if not id_establisment or not id_product or not image:
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
 
         ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
@@ -169,6 +171,8 @@ def getImageProduct(request):
     try:
         id_product = request.data.get('id_product')
         id_establisment = request.data.get('id_establisment')
+        if not id_product or not id_establisment:   
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imagesList = []
 
         image = ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product))
@@ -190,6 +194,8 @@ def updateImageProduct(request):
         id_product = request.data.get('id_product')
         id_image = request.data.get('id_image')
         image = request.FILES.get('image')
+        if not id_establisment or not id_product or not id_image or not image:
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
 
         imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product), id=id_image)
@@ -205,6 +211,8 @@ def deleteImageProduct(request):
         id_establisment = request.data.get('id_establisment')
         id_product = request.data.get('id_product')
         id_image = request.data.get('id_image')
+        if not id_establisment or not id_product or not id_image:
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product), id=id_image)
         imageProduct.delete()
         return Response({'message': 'Image deleted successfully'}, status=status.HTTP_200_OK)
