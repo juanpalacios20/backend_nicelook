@@ -139,20 +139,20 @@ def get_filter_payments_service(request, establisment_id):
             employee = Employee.objects.get(id=appointment.employee.id)
             appointment_services = []  
             total = 0
+            profit_employee = 0
             
             for service in appointment.services.all():
                 profit_establisment = service.price * (service.commission / 100)
-                profit_employee = service.price - profit_establisment
+                profit_employee += service.price - profit_establisment
                 total += profit_establisment
                 appointment_services.append({
                     'service_name': service.name,
                     'service_price': service.price,
                     'commission_percentage': service.commission,
-                    'profit_establisment': total,
-                    'time': appointment.time})
+                    'profit_establisment': total})
                 
             if appointment.date.day == int(day) and appointment.date.month == int(month) and appointment.date.year == int(year):
-                total_day += profit_establisment
+                total_day += total
                 total_comission += profit_employee
                 services_list.append({
                     'profit_establisment': total,
@@ -161,7 +161,8 @@ def get_filter_payments_service(request, establisment_id):
                     'total': appointment.payment.total,
                     'date': appointment.date,
                     'employee': employee.user.username,
-                    'services': appointment_services
+                    'time': appointment.time,
+                    'services': appointment_services,
             })
             ganancias_meses[int(appointment.date.month)-1] += total
                       
@@ -219,7 +220,7 @@ def get_filter_payments_product(request, establisment_id):
             for product in productpayment.products.all():
                 discount = (product.price * (product.discount / 100))
                 discount_price = product.price - discount  # Precio con descuento
-                profit = (product.purchase_price - discount_price) * productpayment.quantity 
+                profit = (discount_price - product.purchase_price) * productpayment.quantity 
                 total += profit
                 products_info.append({
                         'product_name': product.name,
