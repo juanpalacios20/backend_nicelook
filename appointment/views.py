@@ -13,7 +13,9 @@ class appointmentViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 def appointment_list(request):
     try:
+        print("I am here")
         appointments = Appointment.objects.all()
+        print(appointments)
         serializer = appointmentSerializer(appointments, many=True)
         return Response(serializer.data)
     except:

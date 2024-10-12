@@ -21,5 +21,5 @@ class Appointment (models.Model):
 
     
     def __str__(self):
-        return self.time
+        return self.client.user.username
     

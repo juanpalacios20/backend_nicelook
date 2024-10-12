@@ -9,7 +9,6 @@ class Payment (models.Model):
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
     total = models.FloatField()
     discount = models.FloatField(null = True)
-    estate = models.BooleanField()
     date = models.DateField()
     method = models.CharField(max_length=50)
 
