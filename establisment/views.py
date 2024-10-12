@@ -237,6 +237,7 @@ def get_filter_payments_product(request, establisment_id):
                 product_list.append({
                     'payment_id': productpayment.id,
                     'client': productpayment.client.user.username,
+                    'total_payment': productpayment.total,
                     'total': total,
                     'date': productpayment.date,
                     'method': productpayment.method,
