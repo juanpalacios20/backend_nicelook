@@ -9,11 +9,14 @@ from rest_framework.response import Response
 class appointmentViewSet(viewsets.ModelViewSet):
     serializer_class = appointmentSerializer
     queryset = Appointment.objects.all()
-    
-@api_view(['GET'])
+     
+@api_view(['POST'])
 def appointment_list(request):
     try:
-        appointments = Appointment.objects.all()
+        query= request.data.get('date')
+        appointments = Appointment.objects.filter(date= query)
+        if not appointments:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = appointmentSerializer(appointments, many=True)
         return Response(serializer.data)
     except:
