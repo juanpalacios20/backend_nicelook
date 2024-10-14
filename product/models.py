@@ -16,6 +16,8 @@ class Product (models.Model):
     estate = models.BooleanField()
     discount = models.FloatField()
     review = models.ManyToManyField(Review, null=True)
+    code = models.BigIntegerField(default=0)
+    
     
     def __str__ (self):
         return self.name

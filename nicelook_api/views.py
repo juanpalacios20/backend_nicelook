@@ -71,12 +71,13 @@ def addProduct(request):
         expiration_date = request.data.get('expiration_date')
         quantity = request.data.get('quantity')
         brand = request.data.get('brand')
+        code = request.data.get('code')
         estate = True
         
         if not name or not description or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        Product.objects.create(name=name,
+        Product.objects.create(name=name,code=code,
                                description=description, 
                                price=price, distributor=distributor, 
                                entry_date=entry_date, expiration_date=expiration_date, 
@@ -110,6 +111,7 @@ def updateProduct(request):
         quantity = request.data.get('quantity')
         estate = request.data.get('estate')
         discount = request.data.get('discount')
+        code = request.data.get('code')
         
         product = Product.objects.get(id=product_id)
         
@@ -131,6 +133,8 @@ def updateProduct(request):
             product.quantity = quantity
         if estate:
             product.estate = estate
+        if code:
+            product.code = code
         if discount:
             product.discount = discount
         product.save()
