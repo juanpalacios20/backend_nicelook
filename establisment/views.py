@@ -10,7 +10,8 @@ from service.models import Service
 from appointment.models import Appointment
 from employee.models import Employee
 from employee_services.models import EmployeeServices
-from product_payment.models import Product_payment
+from product_payment.models import Product_payment, Product_quantity
+
 
 # Create your views here.
 @api_view(['POST'])
@@ -157,10 +158,10 @@ def get_filter_payments_service(request, establisment_id):
                 services_list.append({
                     'profit_establisment': total,
                     'appointment_id': appointment.id,
-                    'client': appointment.client.user.username,
+                    'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
                     'total': appointment.payment.total,
                     'date': appointment.date,
-                    'employee': employee.user.username,
+                    'employee': employee.user.first_name + ' ' + employee.user.last_name,
                     'time': appointment.time,
                     'services': appointment_services,
             })
@@ -216,32 +217,39 @@ def get_filter_payments_product(request, establisment_id):
         for productpayment in productPayments:
             products_info = [] 
             total = 0
-            
+            quantity = 0
             for product in productpayment.products.all():
-                discount = (product.price * (product.discount / 100))
-                discount_price = product.price - discount  # Precio con descuento
-                profit = (discount_price - product.purchase_price) * productpayment.quantity 
+                discount = (product.product.price * (product.product.discount / 100))
+                discount_price = product.product.price - discount  
+                profit = (discount_price - product.product.purchase_price) * product.quantity 
                 total += profit
+                quantity += product.quantity
                 products_info.append({
-                        'product_name': product.name,
-                        'product_price': product.price,
+                        'product_name': product.product.name,
+                        'product_price': product.product.price,
                         'discount_price': discount,
+                        #ganancia del producto en cuestion, por ejemplo, si el producto le cuesta al establecimiento 2500
+                        #y el producto cuesta 5000, la ganancia es 5000 - 2500 = 2500 (considerando que el descuento sea 0)
                         'profit': profit,
-                        'quantity': productpayment.quantity,
-                        'brand': product.brand,
-                        'estate': product.estate
+                        #si se vendieron 2 shampoos, cantidad es 2, se itera y hace lo mismo para cada producto
+                        'quantity': product.quantity,
+                        'brand': product.product.brand,
+                        'estate': product.product.estate
                     })
                 
             if productpayment.date.day == int(day) and productpayment.date.month == int(month) and productpayment.date.year == int(year):
                 total_day += profit
                 product_list.append({
                     'payment_id': productpayment.id,
-                    'client': productpayment.client.user.username,
+                    'client': productpayment.client.user.first_name + " " + productpayment.client.user.last_name,
+                    #lo total que pagó el cliente
                     'total_payment': productpayment.total,
+                    #la ganancia total de la venta en el dia elegido
                     'total': total,
                     'date': productpayment.date,
                     'method': productpayment.method,
-                    'quantity': productpayment.quantity,
+                    #la cantidad total, entonces si son 2 shampoos y 3 tintes, seria una cantidad de 5 productos
+                    'quantity': quantity,
                     'products': products_info
                 })
         profit_months[int(productpayment.date.month)-1] += total 
