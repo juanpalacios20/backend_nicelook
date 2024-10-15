@@ -9,9 +9,10 @@ from product.models import Product
 from establisment.models import Establisment
 from django.middleware.csrf import get_token
 from product.serializers import productSerializer
-from Image_product.models import ImageProduct
+from Image_product.models import ImageProduct   
 import base64
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_protect
 
 
 @api_view(['POST'])
@@ -59,7 +60,10 @@ def loginAdmin(request):
     
     return Response({'token': token.key, 'csrf_token': csrf_token}, status=status.HTTP_200_OK)
 
+
+
 @api_view(['POST'])
+@csrf_protect
 def addProduct(request):
     try:
         name = request.data.get('name')
@@ -89,6 +93,7 @@ def addProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET'])
+
 def getProducts(request):
     try:
         products = Product.objects.all()
@@ -98,6 +103,7 @@ def getProducts(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['PATCH'])
+@csrf_protect
 def updateProduct(request):
     try:
         product_id = request.data.get('product_id')
@@ -143,6 +149,7 @@ def updateProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
 @api_view(['DELETE'])
+@csrf_protect
 def deleteProduct(request):
     try:
         product_id = request.data.get('product_id')
@@ -154,6 +161,7 @@ def deleteProduct(request):
     
 
 @api_view(['POST'])
+@csrf_protect
 def uploadImage(request):
     try:
         id_establisment = request.data.get('id_establisment')
@@ -171,6 +179,7 @@ def uploadImage(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
+@csrf_protect
 def getImageProduct(request):
     try:
         id_product = request.data.get('id_product')
@@ -192,6 +201,7 @@ def getImageProduct(request):
     
 
 @api_view(['PATCH'])
+@csrf_protect
 def updateImageProduct(request):
     try:
         id_establisment = request.data.get('id_establisment')
@@ -210,6 +220,7 @@ def updateImageProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
+@csrf_protect
 def deleteImageProduct(request):
     try:
         id_establisment = request.data.get('id_establisment')
