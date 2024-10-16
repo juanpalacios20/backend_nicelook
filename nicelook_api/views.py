@@ -12,8 +12,8 @@ from product.serializers import productSerializer
 from Image_product.models import ImageProduct   
 import base64
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_protect
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 
 @api_view(['POST'])
 def register(request):
@@ -63,7 +63,7 @@ def loginAdmin(request):
 
 
 @api_view(['POST'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def addProduct(request):
     try:
         name = request.data.get('name')
@@ -93,7 +93,6 @@ def addProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET'])
-
 def getProducts(request):
     try:
         products = Product.objects.all()
@@ -103,7 +102,7 @@ def getProducts(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['PATCH'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def updateProduct(request):
     try:
         product_id = request.data.get('product_id')
@@ -149,7 +148,7 @@ def updateProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
 @api_view(['DELETE'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def deleteProduct(request):
     try:
         product_id = request.data.get('product_id')
@@ -161,7 +160,7 @@ def deleteProduct(request):
     
 
 @api_view(['POST'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def uploadImage(request):
     try:
         id_establisment = request.data.get('id_establisment')
@@ -179,7 +178,7 @@ def uploadImage(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def getImageProduct(request):
     try:
         id_product = request.data.get('id_product')
@@ -201,8 +200,9 @@ def getImageProduct(request):
     
 
 @api_view(['PATCH'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def updateImageProduct(request):
+    
     try:
         id_establisment = request.data.get('id_establisment')
         id_product = request.data.get('id_product')
@@ -220,7 +220,7 @@ def updateImageProduct(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
-@csrf_protect
+@permission_classes([IsAuthenticated])
 def deleteImageProduct(request):
     try:
         id_establisment = request.data.get('id_establisment')
