@@ -4,6 +4,7 @@ from .models import Appointment
 from .serializers import appointmentSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from datetime import date
 
 # Create your views here.
 class appointmentViewSet(viewsets.ModelViewSet):
@@ -13,11 +14,15 @@ class appointmentViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 def appointment_list(request):
     try:
-        query= request.data.get('date')
-        appointments = Appointment.objects.filter(date= query)
-        if not appointments:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+        day = request.data.get('day')
+        month = request.data.get('month')
+        year = request.data.get('year')
+        print(day, month, year)
+        appointments_date = date(year, month, day) 
+        appointments = Appointment.objects.filter(date = appointments_date)
+        if not appointments.exists():
+            return Response({'error': 'doesnt exist appointments' },status=status.HTTP_404_NOT_FOUND)
         serializer = appointmentSerializer(appointments, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
