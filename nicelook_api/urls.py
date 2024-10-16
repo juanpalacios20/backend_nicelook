@@ -23,4 +23,6 @@ urlpatterns = [
     path('image/', include('image.urls')),
     path('establisment/', include('establisment.urls')),
     path('api/', include('appointment.urls')),
+    path('employee/', include('employee.urls')),
+    path('category/', include('category.urls')),
 ]

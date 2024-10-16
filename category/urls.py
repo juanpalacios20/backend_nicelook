@@ -8,4 +8,5 @@ router.register('category', views.categoryViewSet, 'category.views')
 
 urlpatterns = [
     path('all/', include(router.urls)),
+    path('category_list/', views.category_list),
 ]

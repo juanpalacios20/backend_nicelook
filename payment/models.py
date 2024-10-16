@@ -4,7 +4,7 @@ from establisment.models import Establisment
 # Create your models here.
 
 class Payment (models.Model):
-    state = models.BooleanField()
+    state = models.BooleanField(default=True)
     client = models.ForeignKey(Client, on_delete=models.CASCADE)
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
     total = models.FloatField()
