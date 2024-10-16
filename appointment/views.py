@@ -21,7 +21,7 @@ def appointment_list(request):
         appointments_date = date(year, month, day) 
         appointments = Appointment.objects.filter(date = appointments_date)
         if not appointments.exists():
-            return Response({'error': 'doesnt exist appointments' },status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         serializer = appointmentSerializer(appointments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except:

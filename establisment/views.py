@@ -101,7 +101,6 @@ def get_establisment(request, establisment_id):
         return JsonResponse({'error': str(e)}, status=500)
     
 # Metodos para el apartado de finanzas
-
 @api_view(['GET'])
 def get_filter_payments_service(request, establisment_id):
     try:
@@ -109,7 +108,6 @@ def get_filter_payments_service(request, establisment_id):
         year = request.GET.get('year')
         month = request.GET.get('month')
         day = request.GET.get('day')
-        print(year, month, day)
         services_list = [] 
         total_comission = 0
         ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -123,16 +121,12 @@ def get_filter_payments_service(request, establisment_id):
         
         # Busca el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
-        print(establisment)
-        print("hasta aqui silvo")
         # Filtra las citas por el establecimiento, estado, año y mes
         appointments = Appointment.objects.filter(
             establisment=establisment,
             estate__icontains=state,
             date__year=year
         )
-        print("aqui no silvo")
-        print(appointments)
         if not appointments.exists():
             return JsonResponse({'error': 'No appointments found'}, status=404) 
         
@@ -141,11 +135,13 @@ def get_filter_payments_service(request, establisment_id):
             appointment_services = []  
             total = 0
             profit_employee = 0
+            pago_total = 0
             
             for service in appointment.services.all():
                 profit_establisment = service.price * (service.commission / 100)
                 profit_employee += service.price - profit_establisment
                 total += profit_establisment
+                pago_total += service.price
                 appointment_services.append({
                     'service_name': service.name,
                     'service_price': service.price,
@@ -159,7 +155,7 @@ def get_filter_payments_service(request, establisment_id):
                     'profit_establisment': total,
                     'appointment_id': appointment.id,
                     'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
-                    'total': appointment.payment.total,
+                    'total': pago_total,
                     'date': appointment.date,
                     'employee': employee.user.first_name + ' ' + employee.user.last_name,
                     'time': appointment.time,
@@ -183,7 +179,6 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': 'Employee service not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': "Something went wrong"}, status=500)
-
     
 @api_view(['GET'])
 def get_filter_payments_product(request, establisment_id):
