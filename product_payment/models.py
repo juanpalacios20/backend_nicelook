@@ -4,7 +4,7 @@ from establisment.models import Establisment
 from product.models import Product
 # Create your models here.
 
-class Product_quantity (models.Model):
+class Product_quantity(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.FloatField()
     
