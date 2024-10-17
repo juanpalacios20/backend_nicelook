@@ -20,6 +20,9 @@ def appointment_list(request):
         print(day, month, year)
         appointments_date = date(year, month, day) 
         appointments = Appointment.objects.filter(date = appointments_date)
+        for appointment in appointments:
+            for appointment_service in appointment.services.all():
+                appointment.total += appointment_service.price	
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         serializer = appointmentSerializer(appointments, many=True)

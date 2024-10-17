@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
+from establisment.models import Establisment
 
 # Create your views here.
 
@@ -21,12 +22,18 @@ class serviceViewSet(viewsets.ModelViewSet):
 def create_service(request):
     #Se obtiene los parametros enviados por parte del front
     #data = request.data
+    establishment_id = request.data.get("establishment_id")
     name = request.data.get("name")
     price = request.data.get("price")
     commission = request.data.get("commission")
     category = request.data.get("category")
-
     commission = int(commission)
+    print('id', establishment_id)
+    print('name', name)
+    print('price', price)
+    print('commission', commission)
+    print('category', category)
+
 
     if commission < 0 or commission > 100:
         return Response(
@@ -40,16 +47,25 @@ def create_service(request):
         "price": price,
         #"duration": data.get("duration"),
         "commission": commission,
-        "category": category
+        "category": category,
+        "state": True
     }
     
     try:
-        service = Service.objects.create(**service_data)
-        service.save()
-        return Response(
-            {
-                "message": "Servicio creado con éxito."
-            }, status=status.HTTP_201_CREATED)
+        print("entro")
+        try: 
+            service = Service.objects.create(**service_data, establisment=Establisment.objects.get(id=establishment_id))
+            print("creo")
+            service.save()
+            return Response(
+                {
+                    "message": "Servicio creado con éxito."
+                }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(e)
+            return Response(
+                {"error": "No se pudo crear el servicio."}, status=status.HTTP_400_BAD_REQUEST
+            )
             
     except:
         return Response(
@@ -112,10 +128,13 @@ def update_service(request):
 #@permission_classes([IsAuthenticated])
 def delete_service(request):
     id = request.GET.get("idService")
-    print(id)
+    print("id", id)
     try:
         #Se obtiene el id del servicio y se busca en la base de datos
+        print("entrando al try")
         service = Service.objects.get(id=id)
+        print("saliendo")
+        print('service', service)
         
     except service.DoesNotExist:
         #Si no existe un servicio con el id enviado se responde con un codigo 404
@@ -124,7 +143,9 @@ def delete_service(request):
         )
     
     #Se elimina el servicio de la base de datos
+    print("eliminando")
     service.delete()
+    print("eliminado")
     
     #Se envia un mensaje de satisfaccion del la accion
     return Response(
@@ -139,9 +160,11 @@ def delete_service(request):
 #@permission_classes([IsAuthenticated])
 def list_service(request):
     services = None
+    establisment_id = request.query_params.get("establishment_id")
+    print('id', establisment_id)
     try:
         #Se obtienen todos los servicios que se encuentran en la base de datos
-        services = Service.objects.all()
+        services = Service.objects.filter(establisment = Establisment.objects.get(id=establisment_id))
         
     except services is None:
         #Si la lista es vacia, se devulve un mensaje informando que no hay servicios registrados
