@@ -15,7 +15,8 @@ class Product (models.Model):
     estate = models.BooleanField()
     discount = models.FloatField()
     purchase_price = models.FloatField()
-
+    code = models.BigIntegerField(default=0)
+    
     
     def __str__ (self):
         return self.name

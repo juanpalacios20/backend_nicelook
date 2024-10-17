@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path 
 
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,6 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Crea una instancia de AutoConfig
+
+
+# Ahora usa config para obtener tu clave secreta
 SECRET_KEY = 'django-insecure-7pdxf=j1!sqj7&z7&hszn6pp=(*+8kyxttqdu$e0+#fm8@$9at'
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -39,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'establisment',
     'image',
@@ -59,9 +66,19 @@ INSTALLED_APPS = [
     'category',
     'product_payment',
     'employee_image',
+    'django.contrib.sites',  # Necesario para django-allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',  # Proveedor de Google
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'Image_product',
     
     
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -72,6 +89,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'nicelook_api.urls'
@@ -104,8 +122,8 @@ DATABASES = {
         'NAME': 'nicelook_db',
         'USER': 'postgres',
         'PASSWORD': 'serenity',
-        'HOST': 'localhost',  # O la IP de tu servidor si está alojada remotamente
-        'PORT': '5432',  # El puerto predeterminado de PostgreSQL
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -158,5 +176,24 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
+
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',  # JWT con cookies
+    ],
+}
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',  # Backend por defecto
+    'allauth.account.auth_backends.AuthenticationBackend',  # Django-allauth
+)
+
+# Configuración para permitir inicio de sesión a través de Google
+
+
