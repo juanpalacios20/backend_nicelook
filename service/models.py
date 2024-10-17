@@ -8,7 +8,7 @@ class Service (models.Model):
     name = models.CharField(max_length=100)
     price = models.FloatField()
     commission = models.FloatField()
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    category = models.CharField(max_length=100)
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
     state = models.BooleanField()
 
