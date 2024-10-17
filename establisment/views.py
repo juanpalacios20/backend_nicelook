@@ -10,8 +10,7 @@ from service.models import Service
 from appointment.models import Appointment
 from employee.models import Employee
 from employee_services.models import EmployeeServices
-from product_payment.models import Product_payment, Product_quantity
-
+from product_payment.models import Product_payment
 
 # Create your views here.
 @api_view(['POST'])
@@ -181,88 +180,3 @@ def get_filter_payments_service(request, establisment_id):
     except Exception as e:
         return JsonResponse({'error': "Something went wrong"}, status=500)
     
-@api_view(['GET'])
-def get_filter_payments_product(request, establisment_id):
-    try:
-        # Obtener año y mes de la consulta
-        year = request.GET.get('year')
-        month = request.GET.get('month')
-        day = request.GET.get('day')
-                
-        product_list = [] 
-        profit_months = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        total_day = 0
-
-        if not year or not month or not day:
-            return JsonResponse({'error': 'Year, month and day are required parameters'}, status=400)
-
-        # Buscar el establecimiento
-        establisment = Establisment.objects.get(id=establisment_id)
-
-        # Filtrar los pagos de productos por establecimiento, estado, año y mes
-        productPayments = Product_payment.objects.filter(
-            establisment=establisment,
-            state=False,
-            date__year=year
-        )
-        
-        if not productPayments.exists():
-            return JsonResponse({'error': 'No product payments found'}, status=404)  
-        
-        # Iterar sobre los pagos de productos
-        for productpayment in productPayments:
-            products_info = [] 
-            total = 0
-            quantity = 0
-            for product in productpayment.products.all():
-                discount = (product.product.price * (product.product.discount / 100))
-                discount_price = product.product.price - discount  
-                profit = (discount_price - product.product.purchase_price) * product.quantity 
-                total += profit
-                quantity += product.quantity
-                products_info.append({
-                        'product_name': product.product.name,
-                        'product_price': product.product.price,
-                        'discount_price': discount,
-                        #ganancia del producto en cuestion, por ejemplo, si el producto le cuesta al establecimiento 2500
-                        #y el producto cuesta 5000, la ganancia es 5000 - 2500 = 2500 (considerando que el descuento sea 0)
-                        'profit': profit,
-                        #si se vendieron 2 shampoos, cantidad es 2, se itera y hace lo mismo para cada producto
-                        'quantity': product.quantity,
-                        'brand': product.product.brand,
-                        'estate': product.product.estate
-                    })
-                
-            if productpayment.date.day == int(day) and productpayment.date.month == int(month) and productpayment.date.year == int(year):
-                total_day += profit
-                product_list.append({
-                    'payment_id': productpayment.id,
-                    'client': productpayment.client.user.first_name + " " + productpayment.client.user.last_name,
-                    #lo total que pagó el cliente
-                    'total_payment': productpayment.total,
-                    #la ganancia total de la venta en el dia elegido
-                    'total': total,
-                    'date': productpayment.date,
-                    'method': productpayment.method,
-                    #la cantidad total, entonces si son 2 shampoos y 3 tintes, seria una cantidad de 5 productos
-                    'quantity': quantity,
-                    'products': products_info
-                })
-        profit_months[int(productpayment.date.month)-1] += total 
-            # Añadir la información del pago y los productos a la lista general
-        
-        # Devolver la ganancia del establecimiento y la lista de productos con los detalles
-        profit_year = sum(profit_months)
-        return JsonResponse({
-            'ganancia_meses': profit_months[int(month)-1],
-            'ganancia_año': profit_year,
-            'ganancia_establecimiento': total_day,
-            'product_payments': product_list
-        }, status=200)
-
-    except Establisment.DoesNotExist:
-        return JsonResponse({'error': 'No establisment found'}, status=404)
-    except Product.DoesNotExist:
-        return JsonResponse({'error': 'Product not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': "hola"}, status=500)

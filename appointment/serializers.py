@@ -2,7 +2,6 @@ from rest_framework import serializers
 from .models import Appointment
 from client.serializers import clientSerializer
 from employee.serializers import EmployeeSerializer
-from payment.serializers import paymentSerializer
 from schedule.serializers import scheduleSerializer
 from service.serializers import serviceSerializer
 from establisment.serializers import establismentSerializer
@@ -10,7 +9,6 @@ from establisment.serializers import establismentSerializer
 class appointmentSerializer(serializers.ModelSerializer):
     client = clientSerializer()
     employee = EmployeeSerializer()
-    payment = paymentSerializer()
     services = serviceSerializer(many=True)
     schedule = scheduleSerializer()
     establisment = establismentSerializer()
