@@ -101,7 +101,6 @@ def get_establisment(request, establisment_id):
         return JsonResponse({'error': str(e)}, status=500)
     
 # Metodos para el apartado de finanzas
-
 @api_view(['GET'])
 def get_filter_payments_service(request, establisment_id):
     try:
@@ -137,6 +136,7 @@ def get_filter_payments_service(request, establisment_id):
             total = 0
             pago_total = 0
             profit_employee = 0
+            pago_total = 0
             
             for service in appointment.services.all():
                 profit_establisment = service.price * (service.commission / 100)
@@ -180,7 +180,6 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': 'Employee service not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': "Something went wrong"}, status=500)
-
     
 @api_view(['GET'])
 def get_filter_payments_product(request, establisment_id):
