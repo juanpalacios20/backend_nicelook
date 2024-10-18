@@ -1,6 +1,9 @@
 import datetime
 
+from requests import Response
+
 from product.models import Product
+from service.serializers import serviceSerializer
 from .models import Establisment
 import base64
 import json
@@ -10,7 +13,8 @@ from service.models import Service
 from appointment.models import Appointment
 from employee.models import Employee
 from employee_services.models import EmployeeServices
-from product_payment.models import Product_payment
+from rest_framework import status
+
 
 # Create your views here.
 @api_view(['POST'])
@@ -179,3 +183,21 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': 'Employee service not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': "Something went wrong"}, status=500)
+
+@api_view(['GET'])
+def servicesByEstablisment(request, establisment_id):
+    try:
+        # Verificar si el establecimiento existe
+        establisment = Establisment.objects.get(id=establisment_id)
+
+        # Obtener los servicios del establecimiento
+        services = Service.objects.filter(establisment=establisment, state=True)
+
+        # Serializar y devolver la respuesta
+        serializer = serviceSerializer(services, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Establisment.DoesNotExist:
+        return Response({"error": "Establishment not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e: 
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
