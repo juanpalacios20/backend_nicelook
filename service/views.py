@@ -127,7 +127,7 @@ def update_service(request):
 @api_view(["DELETE"])
 #@permission_classes([IsAuthenticated])
 def delete_service(request):
-    id = request.GET.get("idService")
+    id = request.data.get("idService")
     print("id", id)
     try:
         #Se obtiene el id del servicio y se busca en la base de datos
@@ -136,7 +136,7 @@ def delete_service(request):
         print("saliendo")
         print('service', service)
         
-    except service.DoesNotExist:
+    except Service.DoesNotExist:
         #Si no existe un servicio con el id enviado se responde con un codigo 404
         return Response(
             {"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND
@@ -164,7 +164,7 @@ def list_service(request):
     print('id', establisment_id)
     try:
         #Se obtienen todos los servicios que se encuentran en la base de datos
-        services = Service.objects.filter(establisment = Establisment.objects.get(id=establisment_id))
+        services = Service.objects.filter(establisment = establisment_id)
         
     except services is None:
         #Si la lista es vacia, se devulve un mensaje informando que no hay servicios registrados

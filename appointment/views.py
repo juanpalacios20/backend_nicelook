@@ -11,7 +11,7 @@ class appointmentViewSet(viewsets.ModelViewSet):
     serializer_class = appointmentSerializer
     queryset = Appointment.objects.all()
      
-@api_view(['POST'])
+@api_view(['GET'])
 def appointment_list(request):
     try:
         day = request.data.get('day')
@@ -19,7 +19,9 @@ def appointment_list(request):
         year = request.data.get('year')
         print(day, month, year)
         appointments_date = date(year, month, day) 
+        print(appointments_date)
         appointments = Appointment.objects.filter(date = appointments_date)
+        print(appointments.first().date)
         for appointment in appointments:
             for appointment_service in appointment.services.all():
                 appointment.total += appointment_service.price	
