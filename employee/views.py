@@ -75,23 +75,23 @@ def employeeAddService(request, employee_id):
 # Actualizar empleado, recibe los datos del empleado por el Body, ejemplo: /update_employee/
 @api_view(['PUT'])
 def update_employee(request):
-    idUser = request.data.get('idUser')
+    idUser = request.data.get('employee_id')
     if not idUser:
         return Response({'error': 'El id del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        user = User.objects.get(id=idUser)
+        employee = Employee.objects.get(id=idUser)
     except User.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
     try:
-        employee = Employee.objects.get(user=user)
+        employee = Employee.objects.get(id=idUser)
     except Employee.DoesNotExist:
         return Response({'error': 'Empleado no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
     # Datos del Usuario
-    name = request.data.get('name', user.first_name)
-    last_name = request.data.get('last_name', user.last_name)
+    name = request.data.get('name', employee.user.first_name)
+    last_name = request.data.get('last_name', employee.user.last_name)
     
     # Datos del Empleado
     phone = request.data.get('phone', employee.phone)
@@ -107,9 +107,9 @@ def update_employee(request):
 
     
     # Actualizar usuario
-    user.first_name = name
-    user.last_name = last_name
-    user.save()
+    employee.user.first_name = name
+    employee.user.last_name = last_name
+    employee.user.save()
     
     # Actualizar empleado
     employee.phone = phone
