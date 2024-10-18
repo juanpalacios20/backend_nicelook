@@ -34,16 +34,6 @@ urlpatterns = [
     path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
-    path('register/admin/', views.register, name='register_admin'),
-    path('login/admin/', views.loginAdmin, name='login_admin'),
-    path('Product/add/', views.addProduct, name='add_product'),
-    path('Product/getAll/', views.getProducts, name='get_products'),
-    path('Product/update/', views.updateProduct, name='update_product'),
-    path('Product/delete/', views.deleteProduct, name='delete_product'),
-    path('Product/addImage/', views.uploadImage, name='add_image_product'),
-    path('Product/getImage/', views.getImageProduct, name='get_image_product'),
-    path('Product/updateImage/', views.updateImageProduct, name='update_image_product'),
-    path('Product/deleteImage/', views.deleteImageProduct, name='delete_image_product'),
     path('employee_services/', include('employee_services.urls')), 
     path('administrator/', include('administrator.urls')),#endpoints de administrador
     
