@@ -28,6 +28,8 @@ urlpatterns = [
     path('api/', include('appointment.urls')),
     path('employee/', include('employee.urls')),
     path('category/', include('category.urls')),
+    path('Product/', include('product.urls')),#endpoints de productos
+    path('Product/', include('Image_product.urls')),#endpoints de imagenes
     path('api/', include(service.urls)),
     path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
@@ -43,4 +45,6 @@ urlpatterns = [
     path('Product/updateImage/', views.updateImageProduct, name='update_image_product'),
     path('Product/deleteImage/', views.deleteImageProduct, name='delete_image_product'),
     path('employee_services/', include('employee_services.urls')), 
+    path('administrator/', include('administrator.urls')),#endpoints de administrador
+    
 ]

@@ -57,12 +57,11 @@ class GoogleLogin(SocialLoginView):
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
         id = Administrator.objects.get(user=user).establisment.id
-        print(id)
+        
         refresh['establishment'] = id
 
         # Responder con el token de acceso y la información adicional
         return Response({
             'access_token': str(refresh.access_token),  # Token de acceso con información del usuario
-            'refresh_token': str(refresh),
-            'email': refresh.access_token.get('email'), # Token de refresco
+            'refresh_token': str(refresh), # Token de refresco
         }, status=status.HTTP_200_OK)
