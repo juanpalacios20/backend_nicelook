@@ -42,4 +42,5 @@ urlpatterns = [
     path('Product/getImage/', views.getImageProduct, name='get_image_product'),
     path('Product/updateImage/', views.updateImageProduct, name='update_image_product'),
     path('Product/deleteImage/', views.deleteImageProduct, name='delete_image_product'),
+    path('employee_services/', include('employee_services.urls')), 
 ]

@@ -179,4 +179,3 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': 'Employee service not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': "Something went wrong"}, status=500)
-    
