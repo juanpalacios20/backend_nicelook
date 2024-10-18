@@ -195,7 +195,9 @@ def servicesByEstablisment(request, establisment_id):
 
         # Serializar y devolver la respuesta
         serializer = serviceSerializer(services, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return JsonResponse({
+            'services': serializer.data
+        }, status=200)
 
     except Establisment.DoesNotExist:
         return Response({"error": "Establishment not found."}, status=status.HTTP_404_NOT_FOUND)
