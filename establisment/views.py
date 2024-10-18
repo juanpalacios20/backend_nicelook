@@ -11,8 +11,7 @@ from service.serializers import serviceSerializer
 class establismentViewSet(viewsets.ModelViewSet):
     serializer_class = establismentSerializer
     queryset = Establisment.objects.all()
-    
-    
+ 
 @api_view(['GET'])
 def servicesByEstablisment(request, establisment_id):
     try:
@@ -28,5 +27,5 @@ def servicesByEstablisment(request, establisment_id):
 
     except Establisment.DoesNotExist:
         return Response({"error": "Establishment not found."}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+    except Exception as e: 
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  

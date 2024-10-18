@@ -55,5 +55,5 @@ def employeeServiceDelete(request, employee_id, service_id):
     except EmployeeServices.DoesNotExist:
         return Response({"error": "Service not found."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e: 
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
     

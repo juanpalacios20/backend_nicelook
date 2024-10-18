@@ -7,6 +7,6 @@ router = routers.DefaultRouter()
 router.register('employee', views.employeeViewSet, 'employee.views')   
 
 urlpatterns = [
-    path('all/', include(router.urls)),
+    path('all/', include(router.urls)), 
     path('addservice/<int:employee_id>/', views.employeeAddService),
 ]
