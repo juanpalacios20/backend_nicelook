@@ -8,5 +8,5 @@ router.register('establisment', views.establismentViewSet, 'establisment')
 
 urlpatterns = [
     path('all/', include(router.urls)),
-    path('servicesByEstablisment/<int:establisment_id>/', views.servicesByEstablisment),
+    path('servicesByEstablisment/<int:establisment_id>/', views.servicesByEstablisment), 
 ]
