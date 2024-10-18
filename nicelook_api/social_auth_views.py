@@ -7,7 +7,7 @@ import requests
 from administrator.models import Administrator
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
-
+from establisment.models import Establisment
 
 User = get_user_model()
 
@@ -45,7 +45,8 @@ class GoogleLogin(SocialLoginView):
 
         if created:
             # Crear un administrador si el usuario es nuevo
-            Administrator.objects.create(user=user)
+            establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name)
+            Administrator.objects.create(user=user, establisment=establishment)
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
@@ -55,7 +56,9 @@ class GoogleLogin(SocialLoginView):
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
-
+        id = Administrator.objects.get(user=user).establisment.id
+        print(id)
+        refresh['establishment'] = id
 
         # Responder con el token de acceso y la información adicional
         return Response({

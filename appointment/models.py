@@ -16,8 +16,7 @@ class Appointment (models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     services = models.ManyToManyField(Service)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-
-    
+    total = models.BigIntegerField(default=0)
     def __str__(self):
         return self.client.user.username
     
