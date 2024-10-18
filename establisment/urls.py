@@ -5,7 +5,6 @@ from . import views
 
 
 urlpatterns = [
-    path('all/', include(router.urls)),
     path('create-establisment/', createEstablisment, name='create-establisment'),
     path('update-establisment/<int:establisment_id>/', update_establisment, name='update-establisment'),
     path('get-establisment/<int:establisment_id>/', get_establisment, name='get-establisment'),
