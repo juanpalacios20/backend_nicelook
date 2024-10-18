@@ -109,6 +109,9 @@ def update_service(request):
     
     if "category" in service_data:
         service.category = service_data["category"]
+    
+    if "state" in service_data:
+        service.state = service_data["state"]
         
      # Guardar la nueva informacion 
     service.save()
