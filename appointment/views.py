@@ -14,13 +14,14 @@ class appointmentViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 def appointment_list(request):
     try:
+        id = request.data.get('id')
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
         print(day, month, year)
         appointments_date = date(year, month, day) 
         print(appointments_date)
-        appointments = Appointment.objects.filter(date = appointments_date)
+        appointments = Appointment.objects.filter(date = appointments_date, establisment = id)
         print(appointments.first().date)
         for appointment in appointments:
             for appointment_service in appointment.services.all():
