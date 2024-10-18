@@ -111,7 +111,6 @@ def get_filter_payments_service(request, establisment_id):
         total_comission = 0
         ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         total_day = 0
-        
         state = "Completada"
         
         # Verifica que los parámetros de año y mes están presentes
@@ -138,7 +137,7 @@ def get_filter_payments_service(request, establisment_id):
             pago_total = 0
             
             for service in appointment.services.all():
-                profit_establisment = service.price * (service.commission / 100)
+                profit_establisment = service.price * service.commission
                 profit_employee += service.price - profit_establisment
                 total += profit_establisment
                 pago_total += service.price

@@ -42,10 +42,14 @@ class GoogleLogin(SocialLoginView):
                 'last_name': last_name,
             }
         )
+        
+        contact_methods = {
+            "mail": "mail"
+        }
 
         if created:
             # Crear un administrador si el usuario es nuevo
-            establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name)
+            establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name, contact_methods=contact_methods)
             Administrator.objects.create(user=user, establisment=establishment)
 
         # Generar tokens de acceso (JWT)

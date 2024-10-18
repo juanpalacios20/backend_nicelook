@@ -109,7 +109,9 @@ def update_service(request):
     
     if "category" in service_data:
         service.category = service_data["category"]
-        
+    
+    if "state" in service_data:
+        service.state = service_data["state"]
      # Guardar la nueva informacion 
     service.save()
 
@@ -143,6 +145,13 @@ def delete_service(request):
         )
     
     #Se elimina el servicio de la base de datos
+    appointments = service.appointment_set.all()
+    for appointment in appointments:
+        if appointment.state == "Pendiente":
+            return Response(
+                {"error": "No se puede eliminar un servicio que está siendo utilizado en una cita pendiente."}, status=status.HTTP_400_BAD_REQUEST
+            )
+            
     print("eliminando")
     service.delete()
     print("eliminado")
