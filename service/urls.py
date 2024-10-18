@@ -13,4 +13,7 @@ urlpatterns = [
     path('delete_service/', views.delete_service, name='delete_service'),
     path('list_service/', views.list_service, name='list_service'),
     path('services_by_category/', views.filter_by_category, name='list_service_by_category'),
+    path('get_photo_service/<int:establisment_id>/<int:service_id>/', views.get_photo_service, name='get_photo_service'),
+    path('upload_photo_service/<int:establisment_id>/<int:service_id>/', views.upload_photo_service, name='upload_photo_service'),
+    path('delete_photo_service/<int:establisment_id>/<int:service_id>/', views.delete_photo_service, name='delete_photo_service'),
 ]

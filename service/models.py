@@ -15,4 +15,12 @@ class Service (models.Model):
     
     def __str__ (self):
         return self.name
-    
+
+class ImageService (models.Model):
+    establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE)
+    image = models.BinaryField()
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__ (self):
+        return self.service

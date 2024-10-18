@@ -1,3 +1,5 @@
+import base64
+from django.http import JsonResponse
 from django.shortcuts import render
 from .models import Service
 from .serializers import serviceSerializer
@@ -8,6 +10,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from establisment.models import Establisment
+from service.models import ImageService
 
 # Create your views here.
 
@@ -213,3 +216,81 @@ def filter_by_category(request):
             {"error": f"Error en el servidor: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+        
+
+@api_view(["POST"])
+def upload_photo_service(request, service_id, establisment_id):
+    try:
+        image_file = request.FILES["image"]
+        establisment = Establisment.objects.get(id=establisment_id)
+        service = Service.objects.get(id=service_id)
+        
+        if not establisment:
+            return JsonResponse({'error': 'The establishment has not been provided'}, status=400)
+        if not service:
+            return JsonResponse({'error': 'The service has not been provided'}, status=400)
+        
+        if not image_file:
+            return JsonResponse({'error': 'The image has not been provided'}, status=400)
+        imageService = ImageService.objects.filter(establisment=establisment, service=service).first()
+        
+        if imageService:
+            imageService.image = image_file.read()
+            imageService.save()
+            return JsonResponse({'success': 'The image has been updated successfully'}, status=200)
+        
+        image_data = image_file.read()
+        image = ImageService.objects.create(
+            establisment=establisment,
+            service=service,
+            image=image_data
+        )
+        image.save()
+        return JsonResponse(
+            {'success': 'The image has been uploaded successfully'}, status=400
+        )
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+      
+@api_view(["GET"])
+def get_photo_service(request, service_id, establisment_id):
+    try:
+        #filtra el logo del establecimiento
+        image_obj = ImageService.objects.filter(establisment=establisment_id, service=service_id ).first()
+
+        if not image_obj:
+            return JsonResponse({'error': 'Image not found'}, status=404)
+
+        #convierte la imagen binaria a base64
+        image_binaria = image_obj.image
+        image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+
+        #convierte la imagen base64 a url
+        mime_type = "image/jpeg"
+        image_base64_url = f"data:{mime_type};base64,{image_base64}"
+
+        return JsonResponse({
+            'imagen_base64': image_base64_url,
+        }, status=200)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+        
+@api_view(["DELETE"])
+def delete_photo_service(request, service_id, establisment_id):
+    try:
+        establisment = Establisment.objects.get(id=establisment_id)
+        image_obj = ImageService.objects.filter(establisment=establisment, service=service_id).first()
+
+        if not image_obj:
+            return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
+
+        image_obj.delete()
+
+        return JsonResponse({'mensaje': 'Imagen eliminada exitosamente'}, status=200)
+
+    except Establisment.DoesNotExist:
+        return JsonResponse({'error': 'Establecimiento no encontrado'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
