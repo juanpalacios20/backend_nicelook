@@ -48,7 +48,7 @@ def addProduct(request):
 @api_view(['GET'])
 def getProducts(request):
     try:
-        id_establisment = request.data.get('id_establisment')
+        id_establisment = request.query_params.get('id_establisment')
         if not id_establisment:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         products = Product.objects.filter(establisment=Establisment.objects.get(id=id_establisment))
