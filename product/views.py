@@ -94,8 +94,10 @@ def updateProduct(request):
             product.expiration_date = expiration_date
         if quantity:
             product.quantity = quantity
-        if estate:
+        if not estate:
             product.estate = estate
+        else:
+            product.estate = True
         if code:
             product.code = code
         if discount:
