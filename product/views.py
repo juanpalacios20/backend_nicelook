@@ -113,7 +113,7 @@ def updateProduct(request):
 #@permission_classes([IsAuthenticated])
 def deleteProduct(request):
     try:
-        product_id = request.data.get('product_id')
+        product_id = request.query_params.get('product_id')
         product = Product.objects.get(id=product_id)
         product.delete()
         return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
