@@ -9,6 +9,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 from django.middleware.csrf import get_token
 from establisment.models import Establisment
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # Create your views here.
 class administratorViewSet(viewsets.ModelViewSet):
@@ -38,11 +39,11 @@ def register(request):
     Administrator.objects.create(user=user, establisment=establishment)
 
     user.save()
-    token = Token.objects.create(user=user)
+    token = RefreshToken.for_user(user)
     token['email'] = email
     token['first_name'] = first_name
     token['last_name'] = last_name
-    return Response({'token': token.key, 'establishment': establishment.id}, status=status.HTTP_201_CREATED)
+    return Response({'token': str(token), 'establishment': establishment.id}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 def loginAdmin(request):
