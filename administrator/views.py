@@ -39,6 +39,9 @@ def register(request):
 
     user.save()
     token = Token.objects.create(user=user)
+    token['email'] = email
+    token['first_name'] = first_name
+    token['last_name'] = last_name
     return Response({'token': token.key, 'establishment': establishment.id}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
