@@ -31,8 +31,14 @@ def addProduct(request):
         purchase_price = request.data.get('purchase_price')
         estate = True
         
-        if not name or not description or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
+        if not name or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not description:
+            description = ''
+        
+        if Product.objects.filter(code=code).exists():
+            return Response({'error': 'Code already exists'}, status=status.HTTP_400_BAD_REQUEST)
         
         Product.objects.create(name=name,code=code,
                                description=description, 
