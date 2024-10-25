@@ -17,5 +17,11 @@ urlpatterns = [
     path('upload_employee_photo/<int:establisment_id>/<int:employee_id>/', views.upload_employee_photo, name='upload_employee_photo'),
     path('get_photo/<int:establisment_id>/<int:employee_id>/', views.get_photo, name='get_employee_photo'),
     path('delete_photo/<int:establisment_id>/<int:employee_id>/', views.delete_photo, name='delete_employee_photo'),
-     path('addservice/<int:employee_id>/', views.employeeAddService), 
+    path('addservice/<int:employee_id>/', views.employeeAddService), 
+    path('history_appointments/<int:employee_id>/', views.history_appointments, name='get_history_appointments'),
+    path('schedule_employee/<int:employee_id>/', views.schedule_employee, name='schedule_employee'),
+    path('create_time/<int:employee_id>/', views.create_time, name='create_time'),
+    path('get_time/<int:employee_id>/', views.get_time, name='get_times'),
+    path('update_time/<int:time_id>/', views.update_time, name='update_time'),
+    path('delete_time/<int:time_id>/', views.delete_time, name='delete_time'),
 ]

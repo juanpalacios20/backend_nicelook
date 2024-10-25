@@ -1,11 +1,16 @@
+from datetime import date
 from rest_framework import viewsets
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from appointment.models import Appointment
+from appointment.serializers import appointmentSerializer
 from employee_image.models import EmployeeImage
 from employee_services.models import EmployeeServices
 from employee_services.serializers import employeeServicesSerializer
+from review_employee.models import ReviewEmployee
+from review_employee.serializers import reviewEmployeeSerializer
 from schedule.models import Schedule
 from employee.models import Employee
 from establisment.models import Establisment
@@ -23,6 +28,9 @@ from employee_image.models import EmployeeImage
 from django.db import transaction
 from category.models import Category
 from service.models import Service
+from schedule.models import Time
+from django.views.decorators.csrf import csrf_exempt
+
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
@@ -389,3 +397,167 @@ def delete_photo(request, establisment_id, employee_id):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+ 
+@csrf_exempt   
+@api_view(['POST'])
+def create_time(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    double_day = request.data.get('double_day', False)
+    time_start_day_one = request.data.get('time_start_day_one')
+    time_end_day_one = request.data.get('time_end_day_one')
+    working_days = request.data.get('working_days', [])
+
+    if not time_start_day_one or not time_end_day_one:
+        return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if double_day:
+        time_start_day_two = request.data.get('time_start_day_two')
+        time_end_day_two = request.data.get('time_end_day_two')
+        
+        if not time_start_day_two or not time_end_day_two:
+            return Response({"error": "El horario del segundo turno es obligatorio si hay doble turno"}, status=status.HTTP_400_BAD_REQUEST)
+
+        Time.objects.create(
+            employee=employee,
+            double_day=double_day,
+            state=True,
+            time_start_day_one=time_start_day_one,
+            time_end_day_one=time_end_day_one,
+            time_start_day_two=time_start_day_two,
+            time_end_day_two=time_end_day_two,
+            working_days=working_days
+        )
+    else:
+        Time.objects.create(
+            employee=employee,
+            double_day=double_day,
+            state=True,
+            time_start_day_one=time_start_day_one,
+            time_end_day_one=time_end_day_one,
+            working_days=working_days
+        )
+
+    return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PATCH'])
+def update_time(request, time_id):
+    try:
+        time = Time.objects.get(id=time_id)
+        double_day = request.data.get('double_day', False)
+        time_start_day_one = request.data.get('time_start_day_one')
+        time_end_day_one = request.data.get('time_end_day_one')
+        working_days = request.data.get('working_days')
+        time_start_day_two = request.data.get('time_start_day_two')
+        time_end_day_two = request.data.get('time_end_day_two')
+        
+        # Verifica si no se proporcionaron datos
+        if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
+            return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Asignación correcta
+        time.double_day = double_day if double_day is not None else time.double_day
+        time.time_start_day_one = time_start_day_one if time_start_day_one is not None else time.time_start_day_one
+        time.time_end_day_one = time_end_day_one if time_end_day_one is not None else time.time_end_day_one
+        time.working_days = working_days if working_days is not None else time.working_days
+        time.time_start_day_two = time_start_day_two if time_start_day_two is not None else time.time_start_day_two
+        time.time_end_day_two = time_end_day_two if time_end_day_two is not None else time.time_end_day_two
+        
+        # Guardar los cambios
+        time.save()
+
+        return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
+@api_view(['DELETE'])
+def delete_time(request, time_id):
+    try:
+        time = Time.objects.get(id=time_id)
+        time.delete()
+        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+def get_time(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        times = Time.objects.filter(employee=employee)
+
+        # Preparamos los datos a devolver
+        times_data = []
+        for time in times:
+            time_data = {
+                'id': time.id,
+                'double_day': time.double_day,
+                'time_start_day_one': time.time_start_day_one,
+                'time_end_day_one': time.time_end_day_one,
+                'working_days': time.working_days,
+                'time_start_day_two': time.time_start_day_two,
+                'time_end_day_two': time.time_end_day_two,
+            }
+            times_data.append(time_data)  # Agregar a la lista
+
+        return Response(times_data, status=status.HTTP_200_OK)  # Devolver la lista completa
+
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def history_appointments(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        day = int(request.GET.get('day'))
+        if not year or not month or not  day:
+            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+        appointments = Appointment.objects.filter(employee=employee, estate__icontains='Pendiente' or 'Cancelada', date__year=year, date__month=month, date__day=day)
+        info_appoiments = []
+        services = []
+        for appointment in appointments:
+            review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee).first()
+            rSerializer = reviewEmployeeSerializer(review)
+            for service in appointment.services.all():
+                services.append({
+                    'name': service.name,
+                })
+            info_appoiments.append({
+                'id': appointment.id,
+                'time': appointment.time,
+                'services': services,
+                'total': appointment.total,
+                'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
+                'rating': rSerializer.data['rating'],
+            })
+        return Response({"appointments": info_appoiments}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+def schedule_employee(request, employee_id):
+    try:
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        day = int(request.GET.get('day'))
+        appointments_date = date(year, month, day) 
+        if not year or not month or not  day:
+            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+        appointments = Appointment.objects.filter(date = appointments_date, employee_id = employee_id, estate__icontains='Pendiente')
+        if not appointments.exists():
+            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
+        serializer = appointmentSerializer(appointments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
