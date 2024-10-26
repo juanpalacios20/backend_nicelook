@@ -43,22 +43,27 @@ def reschedule(request):
         year = request.data.get('year')
         time = request.data.get('time')
 
+        if not id_appointment or not day or not month or not year:
+            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+        
         # Obtener la cita existente
         appointment = Appointment.objects.get(id=id_appointment)
 
-        # Obtener la fecha actual de la cita
-        current_date = appointment.date
+        new_date = date(year=int(year), month=int(month), day=int(day))
 
-        # Actualizar solo las partes específicas de la fecha (día, mes, año) si se proporcionan
-        new_day = int(day) if day else current_date.day
-        new_month = int(month) if month else current_date.month
-        new_year = int(year) if year else current_date.year
+        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, employee=appointment.employee).exists():
+            return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if new_date > appointment.employee.schedule.end_date or new_date < appointment.employee.schedule.start_date:
+            return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if appointment.estate == "Completada" or appointment.estate == "Cancelada":
+            return Response({"error": "appointment canceled or completed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Construir una nueva fecha con los valores proporcionados o los existentes
-        appointment.date = datetime(year=new_year, month=new_month, day=new_day).date()
-
+        appointment.date = new_date
         # Si se proporciona un nuevo tiempo, actualizarlo
         if time:
+            time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
             appointment.time = time
 
         # Guardar los cambios
@@ -74,6 +79,27 @@ def reschedule(request):
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PATCH'])
+def change_state(request):
+    try: 
+        id_appointment = request.data.get('id_appointment')
+        state = request.data.get('state')
+        if not id_appointment or not state:
+            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+        # Obtener la cita existente
+        appointment = Appointment.objects.get(id=id_appointment)
+        if state == "Completada":
+            appointment.estate = "Completada"
+        elif state == "Cancelada":
+            appointment.estate = "Cancelada"
+        else:
+            return Response({"error": "Invalid state value"}, status=status.HTTP_400_BAD_REQUEST)
+        # Guardar los cambios
+        appointment.save()
+        return Response(status=status.HTTP_200_OK)
+    except Appointment.DoesNotExist:
+        return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
         
         
         

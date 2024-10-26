@@ -9,5 +9,6 @@ router.register('appointment', views.appointmentViewSet, 'appointment.views')
 urlpatterns = [
     path('all/', include(router.urls)),
     path('appointment_list/', views.appointment_list),
-    path('appointment_recshedule/', views.reschedule)
+    path('appointment_recshedule/', views.reschedule),
+    path('appointment_change_state/', views.change_state),
 ]
