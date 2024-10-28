@@ -403,6 +403,7 @@ def delete_photo(request, establisment_id, employee_id):
 def create_time(request, employee_id):
     try:
         employee = Employee.objects.get(id=employee_id)
+        time = Time.objects.get(employee=employee)
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -413,7 +414,11 @@ def create_time(request, employee_id):
 
     if not time_start_day_one or not time_end_day_one:
         return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
-
+    
+    repeated = list(set(working_days) & set(time.working_days))
+    if repeated:
+        return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
+    
     if double_day:
         time_start_day_two = request.data.get('time_start_day_two')
         time_end_day_two = request.data.get('time_end_day_two')
@@ -454,20 +459,17 @@ def update_time(request, time_id):
         working_days = request.data.get('working_days')
         time_start_day_two = request.data.get('time_start_day_two')
         time_end_day_two = request.data.get('time_end_day_two')
-        
-        # Verifica si no se proporcionaron datos
+
         if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
             return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Asignación correcta
+
         time.double_day = double_day if double_day is not None else time.double_day
         time.time_start_day_one = time_start_day_one if time_start_day_one is not None else time.time_start_day_one
         time.time_end_day_one = time_end_day_one if time_end_day_one is not None else time.time_end_day_one
         time.working_days = working_days if working_days is not None else time.working_days
         time.time_start_day_two = time_start_day_two if time_start_day_two is not None else time.time_start_day_two
         time.time_end_day_two = time_end_day_two if time_end_day_two is not None else time.time_end_day_two
-        
-        # Guardar los cambios
+
         time.save()
 
         return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
