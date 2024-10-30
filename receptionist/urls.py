@@ -8,4 +8,5 @@ router.register('receptionist', views.receptionistViewSet, 'receptionist.views')
 
 urlpatterns = [
     path('all/', include(router.urls)),
+    path('ReceptionistLogin/', views.ReceptionistLogin.as_view(), name='receptionist_login'),
 ]
