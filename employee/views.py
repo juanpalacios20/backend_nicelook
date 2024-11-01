@@ -403,11 +403,13 @@ def delete_photo(request, establisment_id, employee_id):
 def create_time(request, employee_id):
     try:
         employee = Employee.objects.get(id=employee_id)
-        time = Time.objects.get(employee=employee)
+        print("hola")
+        times = Time.objects.filter(employee=employee)
+        print("hola2")    
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-    double_day = request.data.get('double_day', False)
+    double_day = request.data.get('double_day')
     time_start_day_one = request.data.get('time_start_day_one')
     time_end_day_one = request.data.get('time_end_day_one')
     working_days = request.data.get('working_days', [])
@@ -415,9 +417,10 @@ def create_time(request, employee_id):
     if not time_start_day_one or not time_end_day_one:
         return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
     
-    repeated = list(set(working_days) & set(time.working_days))
-    if repeated:
-        return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
+    for time in times:
+        repeated = list(set(working_days) & set(time.working_days))
+        if repeated:
+            return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
     
     if double_day:
         time_start_day_two = request.data.get('time_start_day_two')
@@ -440,7 +443,7 @@ def create_time(request, employee_id):
         Time.objects.create(
             employee=employee,
             double_day=double_day,
-            state=True,
+            state=False,
             time_start_day_one=time_start_day_one,
             time_end_day_one=time_end_day_one,
             working_days=working_days
@@ -530,7 +533,7 @@ def history_appointments(request, employee_id):
         services = []
         for appointment in appointments:
             total = 0
-            review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee).first()
+            review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee, appointment=appointment.id).first()
             rSerializer = reviewEmployeeSerializer(review)
             for service in appointment.services.all():
                 total += service.price
@@ -539,7 +542,7 @@ def history_appointments(request, employee_id):
                 })
             info_appoiments.append({
                 'id': appointment.id,
-                'time': appointment.time,
+                'time': appointment.time.strftime("%H:%M:%S"),
                 'services': services,
                 'total': total,
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,

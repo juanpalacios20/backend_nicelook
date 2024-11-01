@@ -15,3 +15,15 @@ class appointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = '__all__'
+from rest_framework import serializers
+from .models import Appointment
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    time_formatted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Appointment
+        fields = ('id', 'date', 'time', 'time_formatted', 'estate', 'client', 'employee', 'services', 'schedule', 'total')
+
+    def get_time_formatted(self, obj):
+        return obj.time.strftime("%H:%M:%S")
