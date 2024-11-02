@@ -16,7 +16,18 @@ class Appointment (models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     services = models.ManyToManyField(Service)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-    total = models.BigIntegerField(default=0)
+
     def __str__(self):
         return self.client.user.username
     
+    def total_price(self):
+        total = 0
+        for service in self.services.all():
+            total += service.price
+        return total
+    
+    def commision(self):
+        commision = 0
+        for service in self.services.all():
+            commision += (service.price * service.commission) / 100
+        return commision

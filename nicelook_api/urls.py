@@ -36,5 +36,5 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
     path('employee_services/', include('employee_services.urls')), 
     path('administrator/', include('administrator.urls')),#endpoints de administrador
-    
+    path('receptionist/', include('receptionist.urls')), #endpoints de recepcionista
 ]

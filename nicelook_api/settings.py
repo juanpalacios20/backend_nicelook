@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'review_product', 
     'category',
     'product_payment',
+    'productPaymentDetail',
     'employee_image',
     'django.contrib.sites',  # Necesario para django-allauth
     'allauth',
