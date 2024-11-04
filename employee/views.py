@@ -530,8 +530,8 @@ def history_appointments(request, employee_id):
             return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
         appointments = Appointment.objects.filter(employee=employee, estate__icontains='Completada' or 'Cancelada', date__year=year, date__month=month, date__day=day)
         info_appoiments = []
-        services = []
         for appointment in appointments:
+            services = []
             total = 0
             review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee, appointment=appointment.id).first()
             rSerializer = reviewEmployeeSerializer(review)
@@ -545,6 +545,7 @@ def history_appointments(request, employee_id):
                 'time': appointment.time.strftime("%H:%M:%S"),
                 'services': services,
                 'total': total,
+                'method': appointment.method,
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
                 'rating': rSerializer.data['rating'],
             })
@@ -564,7 +565,23 @@ def schedule_employee(request, employee_id):
         appointments = Appointment.objects.filter(date = appointments_date, employee_id = employee_id, estate__icontains='Pendiente')
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
-        serializer = appointmentSerializer(appointments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        info_appoiments = []
+        for appointment in appointments:
+            services = []
+            total = 0
+            for service in appointment.services.all():
+                total += service.price
+                services.append({
+                    'name': service.name,
+                })
+            info_appoiments.append({
+                'id': appointment.id,
+                'time': appointment.time.strftime("%H:%M:%S"),
+                'services': services,
+                'total': total,
+                'method': appointment.method,
+                'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name
+            })
+        return Response({"appointments": info_appoiments}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
