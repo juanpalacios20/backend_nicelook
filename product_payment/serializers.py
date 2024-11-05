@@ -13,11 +13,13 @@ class ProductQuantitySerializer(serializers.Serializer):
 
 class ProductPaymentSerializer(serializers.ModelSerializer):
     products = ProductQuantitySerializer(many=True, write_only=True)
+    total_price = serializers.ReadOnlyField()
+    total_quantity = serializers.ReadOnlyField()
     details = ProductPaymentDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product_payment
-        fields = ['client', 'establisment', 'date', 'method', 'products', 'discount', 'state', 'details']
+        fields = ['client', 'establisment', 'date', 'method', 'products', 'discount', 'state', 'details', 'total_price', 'total_quantity']
 
     def create(self, validated_data):
         products_data = validated_data.pop('products')

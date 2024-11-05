@@ -25,3 +25,17 @@ class Product_payment (models.Model):
         for detail in self.details.all():
             total += detail.product.price * detail.quantity
         return total
+    
+    @property
+    def total_price(self):
+        total = 0
+        for detail in self.details.all():
+            total += detail.product.price * detail.quantity
+        return total
+    
+    @property
+    def total_quantity(self):
+        total = 0
+        for detail in self.details.all():
+            total += detail.quantity
+        return total
