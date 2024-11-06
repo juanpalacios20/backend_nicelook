@@ -529,6 +529,8 @@ def history_appointments(request, employee_id):
         if not year or not month or not  day:
             return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
         appointments = Appointment.objects.filter(employee=employee, estate__icontains='Completada' or 'Cancelada', date__year=year, date__month=month, date__day=day)
+        if not appointments.exists():
+            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         info_appoiments = []
         for appointment in appointments:
             services = []
