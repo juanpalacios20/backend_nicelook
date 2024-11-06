@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path ,include
 from . import views
+from .views import EmployeeLogin
 from rest_framework import routers
 
 router = routers.DefaultRouter()
@@ -24,4 +25,5 @@ urlpatterns = [
     path('get_time/<int:employee_id>/', views.get_time, name='get_times'),
     path('update_time/<int:time_id>/', views.update_time, name='update_time'),
     path('delete_time/<int:time_id>/', views.delete_time, name='delete_time'),
+    path('EmployeeLogin/', EmployeeLogin.as_view(), name='employee_login'),
 ]
