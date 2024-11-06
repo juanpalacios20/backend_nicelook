@@ -534,11 +534,13 @@ def history_appointments(request, employee_id):
         day = int(request.GET.get('day'))
         if not year or not month or not  day:
             return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
-        appointments = Appointment.objects.filter(employee=employee, estate__icontains='Completada' or 'Cancelada', date__year=year, date__month=month, date__day=day)
-        if not appointments.exists():
+        appointments = Appointment.objects.filter(employee=employee,date__year=year,date__month=month,date__day=day).filter(Q(estate__icontains='Completada') | Q(estate__icontains='Cancelada')
+)
+        if not appointments.exists(): 
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         info_appoiments = []
         for appointment in appointments:
+            services = []
             services = []
             total = 0
             review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee, appointment=appointment.id).first()
@@ -553,6 +555,7 @@ def history_appointments(request, employee_id):
                 'time': appointment.time.strftime("%H:%M:%S"),
                 'services': services,
                 'total': total,
+                'method': appointment.method,
                 'method': appointment.method,
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
                 'rating': rSerializer.data['rating'],
