@@ -38,6 +38,12 @@ def addProduct(request):
         if Product.objects.filter(code=code).exists():
             return Response({'error': 'Code already exists'}, status=status.HTTP_400_BAD_REQUEST)
         
+        if not description:
+            description = ''
+        
+        if Product.objects.filter(code=code).exists():
+            return Response({'error': 'Code already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        
         Product.objects.create(name=name,code=code,
                                description=description, 
                                price=price, distributor=distributor, 
