@@ -7,7 +7,7 @@ from category.models import Category
 class Employee (models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
-    code = models.IntegerField()
+    code = models.CharField()
     phone = models.CharField(max_length=15)
     state = models.BooleanField()
     especialty = models.ManyToManyField(Category)

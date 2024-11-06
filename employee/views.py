@@ -19,6 +19,7 @@ from django.db.models import Max
 import string
 import secrets
 import base64
+import uuid
 from employee_image.models import EmployeeImage
 from django.db import transaction
 from category.models import Category
@@ -417,12 +418,23 @@ class EmployeeLogin(SocialLoginView):
         # Verificar si el correo electrónico está verificado
         if not token_info.get('email_verified'):
             return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+            # Si no existe el usuario, crear uno nuevo
+            user = User.objects.create_user(email=email, first_name=first_name, last_name=last_name)
+            # Crear un objeto Employee asociado al usuario
+            Employee.objects.create(user=user)
+
+        # Obtener el objeto Employee asociado al usuario
+        try:
+            employee = Employee.objects.get(user=user)
+        except Employee.DoesNotExist:
+            # Si no existe el objeto Employee, crear uno nuevo
+            code = uuid.uuid4().hex[:6].upper()
+            employee = Employee.objects.create(user=user, state=True, googleid=google_id, token=token, accestoken=token_info.get('at_hash'), establisment=Establisment.objects.first(),code=code)
+
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
 
@@ -431,13 +443,13 @@ class EmployeeLogin(SocialLoginView):
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
-        id = Employee.objects.get(user=user).establisment.id
-        print(id)
-        refresh['establishment'] = id
-        
+        refresh['establishment'] = employee.establisment.id
+        refresh['state'] = employee.state
+        refresh['code'] = employee.code
+
         # Responder con el token de acceso y la información adicional
         return Response({
-            'access_token': str(refresh.access_token),  # Token de acceso con información del usuario
-            'refresh_token': str(refresh),  # Token de refresco
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
             'email': refresh.access_token.get('email'),
         }, status=status.HTTP_200_OK)
