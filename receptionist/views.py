@@ -1,8 +1,10 @@
+import uuid
 from django.shortcuts import render
 from rest_framework import viewsets
+from establisment.models import Establisment
 from .models import Receptionist
 from .serializers import receptionistSerializer
-from allauth.socialaccount.providers.google.views import SocialLoginView
+from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework.response import Response
 from rest_framework import status
@@ -34,12 +36,27 @@ class ReceptionistLogin(SocialLoginView):
         # Verificar si el correo electrónico está verificado
         if not token_info.get('email_verified'):
             return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Intentar obtener o crear el usuario y el objeto Receptionist
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'Receptionist not found'}, status=status.HTTP_404_NOT_FOUND)
+            # Si no existe el usuario, crear uno nuevo
+            user = User.objects.create_user(email=email, first_name=first_name, last_name=last_name)
         
+        # Intentar obtener o crear el objeto Receptionist asociado al usuario
+        try:
+            receptionist = Receptionist.objects.get(user=user)
+        except Receptionist.DoesNotExist:
+            # Si no existe el objeto Receptionist, crear uno nuevo
+            receptionist = Receptionist.objects.create(
+                user=user,
+                googleid=google_id,
+                token=token,
+                accestoken=token_info.get('at_hash'),
+                establisment=Establisment.objects.first()
+            )
+
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
 
@@ -48,14 +65,11 @@ class ReceptionistLogin(SocialLoginView):
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
-        id = Receptionist.objects.get(user=user).establisment.id
-        print(id)
-        refresh['establishment'] = id
-        
+        refresh['establishment'] = receptionist.establisment.id
+
         # Responder con el token de acceso y la información adicional
         return Response({
-            'access_token': str(refresh.access_token),  # Token de acceso con información del usuario
-            'refresh_token': str(refresh),  # Token de refresco
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
             'email': refresh.access_token.get('email'),
         }, status=status.HTTP_200_OK)
-    
