@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import date
 from datetime import datetime
+from schedule.models import Time
 
 # Create your views here.
 class appointmentViewSet(viewsets.ModelViewSet):
@@ -23,9 +24,6 @@ def appointment_list(request):
         appointments_date = date(year, month, day)
         print(appointments_date)
         appointments = Appointment.objects.filter(date = appointments_date, establisment = id)
-        for appointment in appointments:
-            for appointment_service in appointment.services.all():
-                appointment.total += appointment_service.price	
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         serializer = appointmentSerializer(appointments, many=True)
@@ -42,6 +40,7 @@ def reschedule(request):
         month = request.data.get('month')
         year = request.data.get('year')
         time = request.data.get('time')
+        print(day, month, year, time)
 
         if not id_appointment or not day or not month or not year:
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
@@ -50,12 +49,29 @@ def reschedule(request):
         appointment = Appointment.objects.get(id=id_appointment)
 
         new_date = date(year=int(year), month=int(month), day=int(day))
+        day_date = " "
+        if new_date.weekday() == 0:
+            day_date = "Lun"
+        elif new_date.weekday() == 1:
+            day_date = "Mar"
+        elif new_date.weekday() == 2:
+            day_date = "Mie"    
+        elif new_date.weekday() == 3:
+            day_date = "Jue"
+        elif new_date.weekday() == 4:
+            day_date = "Vie"
+        elif new_date.weekday() == 5:
+            day_date = "Sab"
+        elif new_date.weekday() == 6:    
+            day_date = "Dom"
 
         if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, employee=appointment.employee).exists():
             return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
         
-        if new_date > appointment.employee.schedule.end_date or new_date < appointment.employee.schedule.start_date:
-            return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+        time_employee = Time.objects.filter(employee=appointment.employee).first()
+        if time_employee:
+            if day_date.lower() not in [d.lower() for d in time_employee.working_days]:
+                return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
         
         if appointment.estate == "Completada" or appointment.estate == "Cancelada":
             return Response({"error": "appointment canceled or completed"}, status=status.HTTP_400_BAD_REQUEST)
