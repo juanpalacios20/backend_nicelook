@@ -653,4 +653,6 @@ class EmployeeLogin(SocialLoginView):
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
             'email': refresh.access_token.get('email'),
+            "employee_code": employee.code,
+            "employee_id": employee.id
         }, status=status.HTTP_200_OK)
