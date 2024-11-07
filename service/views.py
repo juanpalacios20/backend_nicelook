@@ -28,6 +28,8 @@ def create_service(request):
     commission = request.data.get("commission")
     category = request.data.get("category")
     commission = int(commission)
+    image_file = request.FILES["image"]
+    image_data = image_file.read()
     print('id', establishment_id)
     print('name', name)
     print('price', price)
@@ -48,7 +50,8 @@ def create_service(request):
         #"duration": data.get("duration"),
         "commission": commission,
         "category": category,
-        "state": True
+        "state": True,
+        "image": image_data
     }
     
     try:
@@ -71,7 +74,6 @@ def create_service(request):
         return Response(
             {"error": "No se pudo crear el servicio."}, status=status.HTTP_400_BAD_REQUEST
         )
-    
     
 #ACTUALIZAR SERVICIO
 @api_view(["PUT"])
@@ -111,7 +113,13 @@ def update_service(request):
         service.category = service_data["category"]
     
     if "state" in service_data:
-        service.state = service_data["state"]
+        if service_data["state"] == "true":
+            service.state = True
+        if service_data["state"] == "false":
+            service.state = False
+    
+    if "image" in service_data:
+        service.image = service_data["image"].read()
         
      # Guardar la nueva informacion 
     service.save()

@@ -46,8 +46,8 @@ def appointments(request):
         total_pagar = 0
         commision = 0
         for appointment in appointments:
-            total_pagar += appointment.total_price()
-            commision += appointment.commision()
+            total_pagar += appointment.total_price
+            commision += appointment.commision
 
         total_pagar = total_pagar - commision
 

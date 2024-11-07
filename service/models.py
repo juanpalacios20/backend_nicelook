@@ -7,6 +7,7 @@ from category.models import Category
 class Service (models.Model):
     name = models.CharField(max_length=100)
     price = models.FloatField()
+    image = models.BinaryField(null=True, blank=True)
     commission = models.FloatField()
     category = models.CharField(max_length=100)
     establisment = models.ForeignKey(Establisment, on_delete=models.CASCADE)
