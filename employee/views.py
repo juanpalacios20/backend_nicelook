@@ -250,7 +250,6 @@ def create_employee(request, establisment_id):
     # Datos del Empleado
     phone = request.data.get('phone')
     especialty = request.data.get('especialty', [])  # Lista de especialidades (IDs)
-    schedule = request.data.get('schedule', None)  # Opcional
     googleid = request.data.get('googleid', None)  # Opcional
     accestoken = request.data.get('accestoken', None)  # Opcional
     token = request.data.get('token', None)  # Opcional
@@ -281,16 +280,17 @@ def create_employee(request, establisment_id):
     if User.objects.filter(email=email).exists():
         return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validar agenda si se proporciona
-    if schedule:
-        try:
-            schedule = Schedule.objects.get(id=schedule)
-        except Schedule.DoesNotExist:
-            return Response({'error': 'Agenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
     # Determinar el siguiente código para el empleado
-    next_code = Employee.objects.aggregate(Max('code'))['code__max'] or 0
-    next_code += 1  # Incrementar para asignar un nuevo código
+    next_code = Employee.objects.aggregate(Max('code'))['code__max']
+
+    # Si next_code es None, asignamos el primer código
+    if next_code is None:
+        next_code = 1
+    else:
+        next_code = int(next_code) + 1  # Convertir el código a número y aumentar
+
+    # Convertir el código a cadena
+    next_code_str = str(next_code)
     
 
     # Creación de usuario
@@ -312,10 +312,9 @@ def create_employee(request, establisment_id):
             state = True  # Estado inicial del empleado
             employee = Employee.objects.create(
                 user=user,
-                code=next_code,  # Asignar el código secuencial
+                code=next_code_str,  # Asignar el código secuencial
                 phone=phone,
                 state=state,
-                schedule=schedule if schedule is not None else None,  # Puede ser None
                 googleid=googleid,
                 token= token,
                 accestoken=accestoken,
@@ -653,4 +652,5 @@ class EmployeeLogin(SocialLoginView):
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
             'email': refresh.access_token.get('email'),
+            'id_employee': employee.id,
         }, status=status.HTTP_200_OK)
