@@ -194,6 +194,12 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',  # Django-allauth
 )
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'nicelooknk2024@gmail.com'  # Cambia por tu correo de Gmail
+EMAIL_HOST_PASSWORD = 'hnkr olbh iube qllx'    # Cambia por tu contraseña de Gmail o una App Password si tienes 2FA habilitado
 # Configuración para permitir inicio de sesión a través de Google
 
 

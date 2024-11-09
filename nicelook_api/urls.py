@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, re_path, include
+
+import product_payment
 from .social_auth_views import GoogleLogin
 import service.urls
 from . import views
@@ -37,4 +39,5 @@ urlpatterns = [
     path('employee_services/', include('employee_services.urls')), 
     path('administrator/', include('administrator.urls')),#endpoints de administrador
     path('receptionist/', include('receptionist.urls')), #endpoints de recepcionista
+    path('api/', include('product_payment.urls')),
 ]
