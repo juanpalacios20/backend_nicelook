@@ -235,15 +235,37 @@ def getInfoEstablisment(request):
         information_establishment['employes_info'] = employesSerializer.data
         information_establishment['services_info'] = servicesSerializer.data
         for employe in information_establishment['employes_info']:
+            del employe['establisment']
+            del employe['user']['username']
+            del employe['googleid']
+            del employe['accestoken']
+            del employe['token']
             services = EmployeeServices.objects.filter(employee=employe['id'])
             if services:
                 employe['employee_services'] = employeeServicesSerializer(services, many=True).data
+                for service in employe['employee_services']:
+                    del service['commission']
+                    del service['employee']
+                    del service['service']['establisment']
+                    del service['service']['commission']
             reviews = ReviewEmployee.objects.filter(employee=employe['id'])
             if reviews:
-                employe['reviews'] = reviewEmployeeSerializer(reviews, many=True).data
-
+                data = reviewEmployeeSerializer(reviews, many=True).data
+                rating = 0
+                count = 1
+                for review in data:
+                    nota = review['rating']
+                    rating = int(nota)/ count
+                    count += 1
+                employe['rating'] = rating
+            image = EmployeeImage.objects.filter(establishment_id=stylos.id, employee_id=employe['id']).first()
+            if image:
+                imageBase64 = base64.b64encode(image.image).decode('utf-8')
+                mime_type = "image/jpeg"
+                image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+                employe['image'] = image_base64_url
         
-        
+        #obtener imagenes del establecimiento
         image_logo = Image.objects.filter(establisment=stylos, code = 1).first()
         if image_logo:
             imageBase64 = base64.b64encode(image_logo.image).decode('utf-8')
@@ -266,4 +288,44 @@ def getInfoEstablisment(request):
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def getInfoEmployee(request):
+    try:
+        id = request.query_params.get('id_employee')
+        employee = Employee.objects.get(id=id)
+        employeeSerializer = EmployeeSerializer(employee)
+        data = employeeSerializer.data
+        del data['establisment']
+        del data['user']['username']
+        del data['googleid']
+        del data['accestoken']
+        del data['token']
+        services = EmployeeServices.objects.filter(employee=id)
+        if services:
+            data['employee_services'] = employeeServicesSerializer(services, many=True).data
+            for service in data['employee_services']:
+                del service['commission']
+                del service['employee']
+                del service['service']['establisment']
+                del service['service']['commission']
+        reviews = ReviewEmployee.objects.filter(employee=id)
+        if reviews:
+            data_review = reviewEmployeeSerializer(reviews, many=True).data
+            rating = 0
+            count = 1
+            for review in data_review:
+                nota = review['rating']
+                rating = int(nota)/ count
+                count += 1
+            data['rating'] = rating
+        image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
+        if image:
+            imageBase64 = base64.b64encode(image.image).decode('utf-8')
+            mime_type = "image/jpeg"
+            image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+            data['image'] = image_base64_url
+        return Response({'employee': data}, status=status.HTTP_200_OK)
+    except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

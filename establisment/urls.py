@@ -10,5 +10,6 @@ urlpatterns = [
     path('get-establisment/<int:establisment_id>/', get_establisment, name='get-establisment'),
     path('get-filter-payments-service/<int:establisment_id>/', get_filter_payments_service, name='get-filter-payments-service'),
     path('servicesByEstablisment/<int:establisment_id>/', views.servicesByEstablisment, name='servicesByEstablisment'),
-    path('info_establishment/', views.getInfoEstablisment)
+    path('info_establishment/', views.getInfoEstablisment),
+    path('get_info_employee/', views.getInfoEmployee),
 ]
