@@ -1,6 +1,7 @@
 import datetime
 
-from requests import Response
+from rest_framework.response import Response
+from rest_framework import status
 
 from product.models import Product
 from service.serializers import serviceSerializer
@@ -13,7 +14,14 @@ from service.models import Service
 from appointment.models import Appointment
 from employee.models import Employee
 from employee_services.models import EmployeeServices
+from employee_services.serializers import employeeServicesSerializer
 from rest_framework import status
+from establisment.serializers import establismentSerializer
+from employee.serializers import EmployeeSerializer
+from employee_image.models import EmployeeImage
+from review_employee.models import ReviewEmployee
+from review_employee.serializers import reviewEmployeeSerializer
+from image.models import Image
 
 
 # Create your views here.
@@ -203,3 +211,59 @@ def servicesByEstablisment(request, establisment_id):
         return Response({"error": "Establishment not found."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e: 
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+    
+@api_view(['GET'])
+def getInfoEstablisment(request):
+    try:
+        information_establishment = {}
+        image_establishment = {
+            "image_logo": " ",
+            "image_banner": " "
+        }
+        # Obtén el establecimiento 'Stylos'
+        stylos = Establisment.objects.get(name='Stylos')
+        stylosSerializer = establismentSerializer(stylos)
+        
+        # Obtén los empleados de 'Stylos'
+        employes = Employee.objects.filter(establisment=stylos)
+        employesSerializer = EmployeeSerializer(employes, many=True)
+
+        services = Service.objects.filter(establisment=stylos)
+        servicesSerializer = serviceSerializer(services, many=True)
+
+        information_establishment['stylos_info'] = stylosSerializer.data
+        information_establishment['employes_info'] = employesSerializer.data
+        information_establishment['services_info'] = servicesSerializer.data
+        for employe in information_establishment['employes_info']:
+            services = EmployeeServices.objects.filter(employee=employe['id'])
+            if services:
+                employe['employee_services'] = employeeServicesSerializer(services, many=True).data
+            reviews = ReviewEmployee.objects.filter(employee=employe['id'])
+            if reviews:
+                employe['reviews'] = reviewEmployeeSerializer(reviews, many=True).data
+
+        
+        
+        image_logo = Image.objects.filter(establisment=stylos, code = 1).first()
+        if image_logo:
+            imageBase64 = base64.b64encode(image_logo.image).decode('utf-8')
+            mime_type = "image/jpeg"
+            image_base64_url_logo = f"data:{mime_type};base64,{imageBase64}"
+            image_establishment['image_logo'] = image_base64_url_logo
+        image_banner = Image.objects.filter(establisment=stylos, code = 2).first()
+        if image_banner:
+            imageBase64 = base64.b64encode(image_banner.image).decode('utf-8')
+            mime_type = "image/jpeg"
+            image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+            image_establishment['image_banner'] = image_base64_url
+            
+
+
+        # Devolver la respuesta con los datos de estilista y empleados
+        return Response({
+            'information_establishment': information_establishment,
+            'image_establishment': image_establishment
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
