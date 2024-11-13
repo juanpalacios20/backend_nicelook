@@ -24,6 +24,8 @@ from review_employee.serializers import reviewEmployeeSerializer
 from image.models import Image
 from review.models import Review
 from review.serializers import reviewSerializer
+from schedule.models import Time
+from schedule.serializers import timeSerializer
 
 
 # Create your views here.
@@ -242,6 +244,7 @@ def getInfoEstablisment(request):
                 rating = int(nota)/ count
                 count += 1
             information_establishment['rating'] = rating
+            information_establishment['reviews'] = count - 1
         
        
         #obtener imagenes del establecimiento
@@ -305,6 +308,9 @@ def getInfoEmployee(request):
             mime_type = "image/jpeg"
             image_base64_url = f"data:{mime_type};base64,{imageBase64}"
             data['image'] = image_base64_url
+        time = Time.objects.filter(employee=id).first()
+        if time:
+            data['time'] = timeSerializer(time).data
         return Response({'employee': data}, status=status.HTTP_200_OK)
     except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -339,12 +345,16 @@ def getEmployees(request):
                     rating = int(nota)/ count
                     count += 1
                 employee['rating'] = rating
+                employee['reviews'] = count - 1
             image = EmployeeImage.objects.filter(establishment_id=establisment.id, employee_id=employee['id']).first()
             if image:
                 imageBase64 = base64.b64encode(image.image).decode('utf-8')
                 mime_type = "image/jpeg"
                 image_base64_url = f"data:{mime_type};base64,{imageBase64}"
                 employee['image'] = image_base64_url
+            time = Time.objects.filter(employee=employee['id']).first()
+            if time:
+                employee['time'] = timeSerializer(time).data
         return Response({'employeesList': data}, status=status.HTTP_200_OK)
     except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
