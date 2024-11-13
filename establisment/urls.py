@@ -12,4 +12,5 @@ urlpatterns = [
     path('servicesByEstablisment/<int:establisment_id>/', views.servicesByEstablisment, name='servicesByEstablisment'),
     path('info_establishment/', views.getInfoEstablisment),
     path('get_info_employee/', views.getInfoEmployee),
+    path('get_employees/', views.getEmployees),
 ]
