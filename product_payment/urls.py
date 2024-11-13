@@ -11,4 +11,7 @@ urlpatterns = [
     path('details/<payment_id>/', views.details, name='details'),
     path('cancel_payment/<payment_id>/', views.cancel_payment, name='cancel_payment'),
     path('send_email/', views.send_email_details, name='send_email_details'),
+    path('agregate_product/<payment_id>/', views.agregate_product, name='agregate_product'),
+    path('complete_payment/<payment_id>/', views.complete_payment, name='complete_payment'),
+    path('delete_product_of_payment/<int:payment_id>/', views.delete_product_of_payment, name='delete_product_of_payment'),
 ]
