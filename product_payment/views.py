@@ -294,7 +294,6 @@ def send_email_details(request):
     return JsonResponse({'mensaje': 'Email enviado'}, status=200)
 
 @api_view(["GET"])
-#@permission_classes([IsAuthenticated])  # Descomentar si necesitas autenticación
 def filter_products(request):
     name = request.query_params.get("name")
     product = Product.objects.filter(name__icontains=name)
@@ -305,6 +304,22 @@ def filter_products(request):
         product = Product.objects.filter(name__icontains=name)
         serializer = productSerializer(product, many=True)
         
+        return Response(
+            {"products": serializer.data},
+            status=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error en el servidor: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        
+@api_view(["GET"])
+def list_products(request, establisment_id):
+    try: 
+        establisment = Establisment.objects.get(id=establisment_id)
+        products = Product.objects.filter(establisment=establisment)[:4]
+        serializer = productSerializer(products, many=True)
         return Response(
             {"products": serializer.data},
             status=status.HTTP_200_OK
