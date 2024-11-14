@@ -278,20 +278,15 @@ def getInfoEmployee(request):
         id = request.query_params.get('id_employee')
         employee = Employee.objects.get(id=id)
         employeeSerializer = EmployeeSerializer(employee)
+        employe_data = {}
         data = employeeSerializer.data
-        del data['establisment']
-        del data['user']['username']
-        del data['googleid']
-        del data['accestoken']
-        del data['token']
-        services = EmployeeServices.objects.filter(employee=id)
-        if services:
-            data['employee_services'] = employeeServicesSerializer(services, many=True).data
-            for service in data['employee_services']:
-                del service['commission']
-                del service['employee']
-                del service['service']['establisment']
-                del service['service']['commission']
+        employe_data['id'] = data['id']
+        employe_data['first_name'] = data['user']['first_name']
+        employe_data['last_name'] = data['user']['last_name']
+        employe_data['email'] = data['user']['email']
+        employe_data['phone'] = data['phone']
+        employe_data['state'] = data['state']
+        employe_data['code'] = data['code']
         reviews = ReviewEmployee.objects.filter(employee=id)
         if reviews:
             data_review = reviewEmployeeSerializer(reviews, many=True).data
@@ -301,17 +296,27 @@ def getInfoEmployee(request):
                 nota = review['rating']
                 rating = int(nota)/ count
                 count += 1
-            data['rating'] = rating
-        image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
+            employe_data['rating'] = rating
+            employe_data['reviews'] = count - 1
+            image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
         if image:
             imageBase64 = base64.b64encode(image.image).decode('utf-8')
             mime_type = "image/jpeg"
             image_base64_url = f"data:{mime_type};base64,{imageBase64}"
-            data['image'] = image_base64_url
+            employe_data['image'] = image_base64_url
         time = Time.objects.filter(employee=id).first()
         if time:
-            data['time'] = timeSerializer(time).data
-        return Response({'employee': data}, status=status.HTTP_200_OK)
+            employe_data['time'] = timeSerializer(time).data
+            del employe_data['time']['employee']
+        services = EmployeeServices.objects.filter(employee=id)
+        if services:
+            employe_data['services'] = employeeServicesSerializer(services, many=True).data
+            for service in employe_data['services']:
+                del service['commission']
+                del service['employee']
+                del service['service']['establisment']
+                del service['service']['commission'] 
+        return Response(employe_data, status=status.HTTP_200_OK)
     except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
