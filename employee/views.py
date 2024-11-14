@@ -622,18 +622,16 @@ class EmployeeLogin(SocialLoginView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # Si no existe el usuario, crear uno nuevo
-            user = User.objects.create_user(email=email, first_name=first_name, last_name=last_name)
-            # Crear un objeto Employee asociado al usuario
-            Employee.objects.create(user=user)
+            # Si no existe el usuario, enviar un mensaje de error
+            return Response({'error': 'Usuario inexistente'}, status=status.HTTP_404_NOT_FOUND)
 
         # Obtener el objeto Employee asociado al usuario
         try:
             employee = Employee.objects.get(user=user)
         except Employee.DoesNotExist:
-            # Si no existe el objeto Employee, crear uno nuevo
-            code = uuid.uuid4().hex[:6].upper()
-            employee = Employee.objects.create(user=user, state=True, googleid=google_id, token=token, accestoken=token_info.get('at_hash'), establisment=Establisment.objects.first(),code=code)
+            # Si no existe el objeto Employee, enviar un mensaje de error
+            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
