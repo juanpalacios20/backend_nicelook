@@ -296,10 +296,14 @@ def send_email_details(request):
 @api_view(["GET"])
 def filter_products(request):
     name = request.query_params.get("name")
-    product = Product.objects.filter(name__icontains=name)
+    products= Product.objects.filter(name__icontains=name)
     serializer = productSerializer(product, many=True)
     
     try: 
+        for p in products:
+            if p.quantity == 0:
+                p.delete()
+                
         name = request.query_params.get("name")
         product = Product.objects.filter(name__icontains=name)
         serializer = productSerializer(product, many=True)
