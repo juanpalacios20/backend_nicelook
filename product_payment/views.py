@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from client.models import Client
 from establisment.models import Establisment
 from product.models import Product
+from product.serializers import productSerializer
 from productPaymentDetail.models import ProductPaymentDetail
 import product_payment
 from .models import Product_payment
@@ -12,6 +13,8 @@ from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.conf import settings
+from rest_framework import status
+from rest_framework.response import Response
 
 # Create your views here.
 class productPaymentViewSet(viewsets.ModelViewSet):
@@ -289,3 +292,25 @@ def send_email_details(request):
 
     send_mail(asunto, mensaje, remitente, destinatarios)
     return JsonResponse({'mensaje': 'Email enviado'}, status=200)
+
+@api_view(["GET"])
+#@permission_classes([IsAuthenticated])  # Descomentar si necesitas autenticación
+def filter_products(request):
+    name = request.query_params.get("name")
+    product = Product.objects.filter(name__icontains=name)
+    serializer = productSerializer(product, many=True)
+    
+    try: 
+        name = request.query_params.get("name")
+        product = Product.objects.filter(name__icontains=name)
+        serializer = productSerializer(product, many=True)
+        
+        return Response(
+            {"products": serializer.data},
+            status=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error en el servidor: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
