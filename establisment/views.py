@@ -280,6 +280,7 @@ def getInfoEmployee(request):
         employeeSerializer = EmployeeSerializer(employee)
         employe_data = {}
         data = employeeSerializer.data
+
         employe_data['id'] = data['id']
         employe_data['first_name'] = data['user']['first_name']
         employe_data['last_name'] = data['user']['last_name']
@@ -287,27 +288,44 @@ def getInfoEmployee(request):
         employe_data['phone'] = data['phone']
         employe_data['state'] = data['state']
         employe_data['code'] = data['code']
+
+        # Inicializar `image` para evitar el error
+        image = None
+
+        # Obtener reseñas
         reviews = ReviewEmployee.objects.filter(employee=id)
         if reviews:
             data_review = reviewEmployeeSerializer(reviews, many=True).data
             rating = 0
-            count = 1
+            count = 0
             for review in data_review:
                 nota = review['rating']
-                rating = int(nota)/ count
+                rating += int(nota)
                 count += 1
-            employe_data['rating'] = rating
-            employe_data['reviews'] = count - 1
-            image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
-        if image:
+            # Calcular el promedio de calificaciones
+            employe_data['rating'] = rating / count if count > 0 else 0
+            employe_data['reviews'] = count
+
+            # Obtener la imagen del empleado
+            image = EmployeeImage.objects.filter(
+                establishment_id=employee.establisment.id, 
+                employee_id=employee.id
+            ).first()
+
+        # Convertir la imagen a base64 si existe
+        if image is not None:
             imageBase64 = base64.b64encode(image.image).decode('utf-8')
             mime_type = "image/jpeg"
             image_base64_url = f"data:{mime_type};base64,{imageBase64}"
             employe_data['image'] = image_base64_url
+
+        # Obtener el horario del empleado
         time = Time.objects.filter(employee=id).first()
         if time:
             employe_data['time'] = timeSerializer(time).data
             del employe_data['time']['employee']
+
+        # Obtener los servicios del empleado
         services = EmployeeServices.objects.filter(employee=id)
         if services:
             employe_data['services'] = employeeServicesSerializer(services, many=True).data
@@ -315,10 +333,13 @@ def getInfoEmployee(request):
                 del service['commission']
                 del service['employee']
                 del service['service']['establisment']
-                del service['service']['commission'] 
+                del service['service']['commission']
+
         return Response(employe_data, status=status.HTTP_200_OK)
-    except Exception as e:  
+
+    except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     
 @api_view(['GET'])
 def getEmployees(request):
