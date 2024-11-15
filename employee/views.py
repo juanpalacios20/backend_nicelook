@@ -106,6 +106,7 @@ def update_employee(request):
     # Datos del Usuario
     name = request.data.get('name', employee.user.first_name)
     last_name = request.data.get('last_name', employee.user.last_name)
+    email = request.data.get('email', employee.user.email)
     
     # Datos del Empleado
     phone = request.data.get('phone', employee.phone)
@@ -123,6 +124,7 @@ def update_employee(request):
     # Actualizar usuario
     employee.user.first_name = name
     employee.user.last_name = last_name
+    employee.user.email = email
     employee.user.save()
     
     # Actualizar empleado
