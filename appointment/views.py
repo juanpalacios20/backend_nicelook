@@ -236,29 +236,40 @@ def create_appointment(request):
     except ValueError:
         return Response({'error': 'Formato de fecha o hora inválido. Use YYYY-MM-DD y HH:MM.'}, status=400)
     
-    # times = Time.objects.filter(employee=employee)
-    # new_date = datetime.date(year=int(date.year), month=int(date.month), day=int(date.day))
-    # day_date = " "
-    # if new_date.weekday() == 0:
-    #     day_date = "Lun"
-    # elif new_date.weekday() == 1:
-    #     day_date = "Mar"
-    # elif new_date.weekday() == 2:
-    #     day_date = "Mie"
-    # elif new_date.weekday() == 3:
-    #     day_date = "Jue"
-    # elif new_date.weekday() == 4:
-    #     day_date = "Vie"
-    # elif new_date.weekday() == 5:
-    #     day_date = "Sab"
-    # elif new_date.weekday() == 6:
-    #     day_date = "Dom"
+    times = Time.objects.filter(employee=employee)
+    day_date = " "
+    if new_date.weekday() == 0:
+        day_date = "Lun"
+    elif new_date.weekday() == 1:
+        day_date = "Mar"
+    elif new_date.weekday() == 2:
+        day_date = "Mie"
+    elif new_date.weekday() == 3:
+        day_date = "Jue"
+    elif new_date.weekday() == 4:
+        day_date = "Vie"
+    elif new_date.weekday() == 5:
+        day_date = "Sab"
+    elif new_date.weekday() == 6:
+        day_date = "Dom"
         
-    # if times:
-    #     for time in times:
-    #         if day_date.lower() not in [d.lower() for d in time.working_days]:
-    #             return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
-    
+    if times:
+        for time_entry in times:
+            start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
+            
+            end_hour_t1 = time_entry.time_end_day_one = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
+        
+            if time_entry.time_start_day_two:
+                start_hour_t2 = time_entry.time_start_day_two = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
+                end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
+            
+            if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
+                return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if time_entry.double_day:
+                if time.time() < start_hour_t1 or time.time() >= end_hour_t2 or time.time() < start_hour_t2 and time.time() >= end_hour_t1:
+                    return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
+            
     if Appointment.objects.filter(date=new_date, employee=employee, time=time).exists():
         return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
 
