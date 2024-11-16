@@ -8,4 +8,5 @@ router.register('client', views.clientViewSet, 'client.views')
 
 urlpatterns = [
     path('all/', include(router.urls)),
+    path('login/', views.ClientLoginView.as_view()),
 ]

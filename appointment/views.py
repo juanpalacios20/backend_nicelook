@@ -1,18 +1,42 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
+import requests
 from rest_framework import viewsets,status
+
+from client.models import Client
+from establisment.models import Establisment
+from service.models import Service
 from .models import Appointment
 from .serializers import appointmentSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import date
 from datetime import datetime
-from schedule.models import Time
+from schedule.models import Schedule, Time
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from django.contrib.auth.models import User
+# from datetime import datetime, timedelta
+# from schedule.google_calendar import GoogleCalendarService
+from employee.models import Employee
+from django.views.decorators.csrf import csrf_exempt
+# from django.utils.decorators import method_decorator
+# from google.auth.transport.requests import Request
+# from googleapiclient.discovery import build
+# from google.oauth2.credentials import Credentials
+from .models import Appointment, Employee, Client
 
-# Create your views here.
-class appointmentViewSet(viewsets.ModelViewSet):
-    serializer_class = appointmentSerializer
-    queryset = Appointment.objects.all()
-     
+# import requests
+# from google.auth.transport.requests import Request
+# from google.oauth2.credentials import Credentials
+from datetime import datetime, timedelta
+
+# import requests
+# from google.auth.transport.requests import Request
+# from google.oauth2.credentials import Credentials
+from datetime import datetime, timedelta
+from rest_framework.response import Response
+
 @api_view(['POST'])
 def appointment_list(request):
     try:
@@ -116,6 +140,227 @@ def change_state(request):
         return Response(status=status.HTTP_200_OK)
     except Appointment.DoesNotExist:
         return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+def generate_time_slots(start_time, end_time, slot_duration=timedelta(minutes=60)):
+    slots = []
+    current_time = start_time
+    while current_time + slot_duration <= end_time:
+        slots.append(current_time)
+        current_time += slot_duration
+    return slots
+
+
+def get_available_times(employee_id, date):
+    # Filtra los registros de tiempo del empleado y verifica el estado
+    time_entries = Time.objects.filter(employee_id=employee_id, state=True)
+    available_slots = []
+
+    for entry in time_entries:
+        # Comprueba si el día solicitado está en los días laborables del empleado
+        if date.strftime("%A") in entry.working_days:
+            # Genera los horarios del primer turno del día
+            start_time = datetime.combine(date, entry.time_start_day_one)
+            end_time = datetime.combine(date, entry.time_end_day_one)
+            available_slots += generate_time_slots(start_time, end_time)
+
+            # Si el empleado trabaja en dos turnos
+            if entry.double_day:
+                start_time = datetime.combine(date, entry.time_start_day_two)
+                end_time = datetime.combine(date, entry.time_end_day_two)
+                available_slots += generate_time_slots(start_time, end_time)
+
+    # Filtrar los horarios ocupados por citas ya existentes
+    appointments = Appointment.objects.filter(employee_id=employee_id, time__date=date)
+    occupied_times = [appointment.time.replace(tzinfo=None) for appointment in appointments]
+    print(f"Available slots: {available_slots}")
+    print(f"Occupied times: {occupied_times}")
+    free_slots = []
+    for slot in available_slots:
+        if not any(slot == occupied_time for occupied_time in occupied_times):
+            free_slots.append(slot)
+
+    return free_slots
+
+
+@api_view(['GET'])
+def check_availability(request, employee_id):
+    # Obtenemos la fecha desde los parámetros de la solicitud
+    date_str = request.query_params.get('date')
+    if not date_str:
+        return Response({'error': 'Date parameter is required'}, status=400)
+    
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+
+    # Llamamos a la función para obtener los horarios disponibles
+    available_times = get_available_times(employee_id, date)
+    available_times_str = [time.isoformat() for time in available_times]
+    
+    return Response({'available_times': available_times_str})
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+import requests
+from datetime import datetime, timedelta
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from .models import Employee, Appointment, Service  # Asegúrate de tener estos modelos
+from decouple import config
+
+@api_view(['POST'])
+@csrf_exempt
+def create_appointment(request):
+    print("Entrando")
+    employee_id = request.data.get('employee_id')
+    year = request.data.get('year')
+    month = request.data.get('month')
+    day = request.data.get('day')
+    new_date = date(year=int(year), month=int(month), day=int(day))
+    time = request.data.get('time')
+    time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
+    services = request.data.get('services')
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        print(employee)
+    except Employee.DoesNotExist:
+        return Response({'error': 'Empleado no encontrado.'}, status=404)
+
+    except ValueError:
+        return Response({'error': 'Formato de fecha o hora inválido. Use YYYY-MM-DD y HH:MM.'}, status=400)
+    
+    # times = Time.objects.filter(employee=employee)
+    # new_date = datetime.date(year=int(date.year), month=int(date.month), day=int(date.day))
+    # day_date = " "
+    # if new_date.weekday() == 0:
+    #     day_date = "Lun"
+    # elif new_date.weekday() == 1:
+    #     day_date = "Mar"
+    # elif new_date.weekday() == 2:
+    #     day_date = "Mie"
+    # elif new_date.weekday() == 3:
+    #     day_date = "Jue"
+    # elif new_date.weekday() == 4:
+    #     day_date = "Vie"
+    # elif new_date.weekday() == 5:
+    #     day_date = "Sab"
+    # elif new_date.weekday() == 6:
+    #     day_date = "Dom"
         
+    # if times:
+    #     for time in times:
+    #         if day_date.lower() not in [d.lower() for d in time.working_days]:
+    #             return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if Appointment.objects.filter(date=new_date, employee=employee, time=time).exists():
+        return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not employee.accestoken:
+        return Response({'error': 'El empleado no tiene configurada la sincronización con Google Calendar.'}, status=400)
+    print(employee.accestoken)
+    # Paso 2: Crear el objeto Credentials con accestoken
+    credentials = Credentials(
+        token=employee.accestoken,
+        refresh_token=employee.token,  # Este debería ser el refresh_token guardado en la base de datos
+        client_id=config('CLIENT_ID'),
+        client_secret=config('CLIENTE_SECRET'),
+        token_uri='https://oauth2.googleapis.com/token'
+    )
+
+    # Verificar si el token ha caducado y renovarlo si es necesario
+    if credentials.expired:
+        print("Token expirado")
+        try:
+            credentials.refresh(Request())  # Renueva el token
+            print("Token refrescado")
+            # Guarda el nuevo access_token en la base de datos
+            employee.accestoken = credentials.token
+            employee.save()
+        except Exception as e:
+            return Response({'error': f'Error al refrescar el token: {str(e)}'}, status=500)
         
-        
+    # Verificar que el token no esté vacío
+    if not credentials.token:
+        print("Token vacío")
+        return Response({'error': 'El token de acceso no es válido.'}, status=400)
+
+    print("Token válido")
+    # Paso 3: Crear el evento en Google Calendar
+
+    event_data = {
+        'summary': 'Cita de servicio',
+        'description': 'Detalles de la cita con el cliente.',  # Descripción predeterminada
+        'start': {
+            'dateTime': f"{new_date}T{request.data.get("time")}:00",  # Combina la fecha y hora predeterminada
+            'timeZone': 'America/Bogota',  # Zona horaria
+        },
+        'end': {
+            # Calcula la hora de finalización sumando 30 minutos a la hora de inicio
+            'dateTime': f"{new_date}T{(datetime.strptime(request.data.get("time"), '%H:%M') + timedelta(minutes=30)).strftime('%H:%M')}:00",
+            'timeZone': 'America/Bogota',
+        },
+        'attendees': [
+            {'email': employee.user.email}  # Correo del empleado, asignado como valor fijo por ahora
+        ],
+    }
+
+    headers = {
+        'Authorization': f'Bearer {credentials.token}',
+        'Content-Type': 'application/json'
+    }
+
+    # Realizar la solicitud para crear el evento
+    print("Creando evento en Google Calendar...")
+    response = requests.post(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        headers=headers,
+        json=event_data
+    )
+    print(response.json())
+
+    # Verificar la respuesta
+    if response.status_code != 200:
+        print("Error al crear el evento en Google Calendar.")
+        return Response({
+            'error': 'No se pudo crear el evento en Google Calendar.',
+            'details': response.json()  # Detalles del error si los hay
+        }, status=500)
+
+    start_date = "2024-11-20"
+    end_date = "2024-11-20"
+    print("Evento creado en Google Calendar.")
+    establishment = Establisment.objects.get(id=request.data.get('establishment'))
+    schedule = Schedule.objects.create(establisment=establishment, start_date=start_date, end_date=end_date)
+    client = Client.objects.get(id=request.data.get('cliente_id'))
+    appointment = Appointment.objects.create(
+        client=client,
+        employee=employee,
+        date=new_date,
+        time=time,
+        establisment=establishment,
+        estate='Pendiente',
+        method='Efectivo',
+        schedule= schedule
+    )
+
+    print("Creando evento en Google Calendar...")
+    response = requests.post(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        headers=headers,
+        json=event_data
+    )
+    print(response.json())
+
+    print("Cita creada en la base de datos.")
+    # Asociar los servicios
+    services = Service.objects.filter(id=request.data.get('services'))
+    appointment.services.set(services)
+    appointment.save()
+
+    # Retornar respuesta exitosa
+    return Response({
+        'message': 'Cita creada y agendada en Google Calendar exitosamente.',
+        'appointment_id': appointment.id,
+        'calendar_event_id': response.json().get('id')  # El ID del evento en Google Calendar
+    })

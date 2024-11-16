@@ -2,13 +2,16 @@ from django.contrib import admin
 from django.urls import path ,include
 from . import views
 from rest_framework import routers
+from django.views.decorators.csrf import csrf_exempt
 
 router = routers.DefaultRouter()
-router.register('appointment', views.appointmentViewSet, 'appointment.views')   
+#router.register('appointment', views.AppointmentViewSet, 'appointment.views')   
 
 urlpatterns = [
     path('all/', include(router.urls)),
     path('appointment_list/', views.appointment_list),
     path('appointment_recshedule/', views.reschedule),
     path('appointment_change_state/', views.change_state),
+    path('availability/<int:employee_id>/', views.check_availability),
+    path('create_appointment/', views.create_appointment),
 ]
