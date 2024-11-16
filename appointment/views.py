@@ -1,6 +1,12 @@
 from django.shortcuts import get_object_or_404, render
 import requests
+from django.shortcuts import get_object_or_404, render
+import requests
 from rest_framework import viewsets,status
+
+from client.models import Client
+from establisment.models import Establisment
+from service.models import Service
 
 from client.models import Client
 from establisment.models import Establisment
