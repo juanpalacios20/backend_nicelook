@@ -1,12 +1,14 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from django.http import JsonResponse
+from Image_product.models import ImageProduct
 from client.models import Client
 from establisment.models import Establisment
 from product.models import Product
 from product.serializers import productSerializer
 from productPaymentDetail.models import ProductPaymentDetail
 import product_payment
+from review_product.models import ReviewProduct
 from .models import Product_payment
 from .serializers import ProductPaymentSerializer
 from rest_framework.decorators import api_view
@@ -179,8 +181,12 @@ def agregate_product(request, payment_id):
 def details (request, payment_id):
     #Este metodo es para ver los detalles de la compra
     try:
+        data = []
         payment = Product_payment.objects.get(id=payment_id)
         serializer = ProductPaymentSerializer(payment)
+        data.append({
+            'info': serializer.data
+        })
         return JsonResponse(serializer.data, status=200)
     except Product_payment.DoesNotExist:
         return JsonResponse({'error': 'Compra no encontrada'}, status=404)
@@ -294,24 +300,52 @@ def send_email_details(request):
     return JsonResponse({'mensaje': 'Email enviado'}, status=200)
 
 @api_view(["GET"])
-def filter_products(request):
+def filter_products(request, establisment_id):
     name = request.query_params.get("name")
-    products= Product.objects.filter(name__icontains=name)
-    serializer = productSerializer(product, many=True)
-    
     try: 
+        establisment = Establisment.objects.get(id=establisment_id)
+        products = Product.objects.filter(establisment=establisment, name__icontains=name)
+            
         for p in products:
             if p.quantity == 0:
+                p.save()
                 p.delete()
-                
-        name = request.query_params.get("name")
-        product = Product.objects.filter(name__icontains=name)
-        serializer = productSerializer(product, many=True)
-        
+
+        data = []
+        for product in products:
+            image = ImageProduct.objects.filter(id_product=product).first()
+            review = ReviewProduct.objects.filter(product=product)
+            contador = 0
+            rating = 0
+            for r in review:
+                contador += 1
+                rating += r.rating
+            rating = rating/contador
+            if not image:
+                image = 0
+                contador = 0
+            data.append({
+                    "id": product.id,
+                    "name": product.name,
+                    "description": product.description,
+                    "price": product.price,
+                    "brand": product.brand,
+                    "distributor": product.distributor,
+                    "entry_date": product.entry_date,
+                    "expiration_date": product.expiration_date,
+                    "quantity": product.quantity,
+                    "estate": product.estate,
+                    "discount": product.discount,
+                    "purchase_price": product.purchase_price,
+                    "code": product.code,
+                    "image": image,
+                    "review": rating
+                })
+
         return Response(
-            {"products": serializer.data},
+            {"products": data},
             status=status.HTTP_200_OK
-        )
+            )
     except Exception as e:
         return Response(
             {"error": f"Error en el servidor: {str(e)}"},
@@ -323,11 +357,48 @@ def list_products(request, establisment_id):
     try: 
         establisment = Establisment.objects.get(id=establisment_id)
         products = Product.objects.filter(establisment=establisment)[:4]
-        serializer = productSerializer(products, many=True)
+            
+        for p in products:
+            if p.quantity == 0:
+                p.save()
+                p.delete()
+
+        data = []
+        for product in products:
+            image = ImageProduct.objects.filter(id_product=product).first()
+            review = ReviewProduct.objects.filter(product=product)
+            contador = 0
+            rating = 0
+            for r in review:
+                contador += 1
+                rating += r.rating
+            rating = rating/contador
+            if not image:
+                image = 0
+                contador = 0
+            data.append({
+                    "id": product.id,
+                    "name": product.name,
+                    "description": product.description,
+                    "price": product.price,
+                    "brand": product.brand,
+                    "distributor": product.distributor,
+                    "entry_date": product.entry_date,
+                    "expiration_date": product.expiration_date,
+                    "quantity": product.quantity,
+                    "estate": product.estate,
+                    "discount": product.discount,
+                    "purchase_price": product.purchase_price,
+                    "code": product.code,
+                    "image": image,
+                    "review": rating,
+                    "establisment": product.establisment.id
+                })
+
         return Response(
-            {"products": serializer.data},
+            {"products": data},
             status=status.HTTP_200_OK
-        )
+            )
     except Exception as e:
         return Response(
             {"error": f"Error en el servidor: {str(e)}"},

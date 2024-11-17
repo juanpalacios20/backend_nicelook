@@ -40,6 +40,7 @@ def reschedule(request):
         month = request.data.get('month')
         year = request.data.get('year')
         time = request.data.get('time')
+        time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
         print(day, month, year, time)
 
         if not id_appointment or not day or not month or not year:
@@ -49,6 +50,7 @@ def reschedule(request):
         appointment = Appointment.objects.get(id=id_appointment)
 
         new_date = date(year=int(year), month=int(month), day=int(day))
+        print(new_date)
         day_date = " "
         if new_date.weekday() == 0:
             day_date = "Lun"
@@ -65,13 +67,14 @@ def reschedule(request):
         elif new_date.weekday() == 6:    
             day_date = "Dom"
 
-        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, employee=appointment.employee).exists():
+        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, employee=appointment.employee, time = time).exists():
             return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
         
-        time_employee = Time.objects.filter(employee=appointment.employee).first()
+        time_employee = Time.objects.filter(employee=appointment.employee)
         if time_employee:
-            if day_date.lower() not in [d.lower() for d in time_employee.working_days]:
-                return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+            for t in time_employee:
+                if day_date.lower() not in [d.lower() for d in t.working_days]:
+                    return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
         
         if appointment.estate == "Completada" or appointment.estate == "Cancelada":
             return Response({"error": "appointment canceled or completed"}, status=status.HTTP_400_BAD_REQUEST)
@@ -79,13 +82,27 @@ def reschedule(request):
         appointment.date = new_date
         # Si se proporciona un nuevo tiempo, actualizarlo
         if time:
-            time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
             appointment.time = time
+        if time:
+            for time_entry in time_employee:
+                start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
 
+                end_hour_t1 = time_entry.time_end_day_one = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
+
+                if time_entry.time_start_day_two:
+                    start_hour_t2 = time_entry.time_start_day_two = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
+                    end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
+
+                if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
+                    return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+
+                if time_entry.double_day:
+                    if time.time() < start_hour_t1 or time.time() > end_hour_t2 or time.time() < start_hour_t2 and time.time() > end_hour_t1:
+                        return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
         # Guardar los cambios
         appointment.save()
 
-        return Response(status=status.HTTP_200_OK)
+        return Response({"success": "Appointment rescheduled"},status=status.HTTP_200_OK)
     
     except Appointment.DoesNotExist:
         return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
