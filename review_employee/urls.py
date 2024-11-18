@@ -8,4 +8,6 @@ router.register('review_employee', views.reviewEmployeeViewSet, 'review_employee
 
 urlpatterns = [
     path('all/', include(router.urls)),
+    path('create_review/<int:client_id>/<int:employee_id>/<int:appointment_id>/', views.create_review, name='create_review'),
+    path('get_reviews_client/<int:client_id>/', views.get_reviews_client, name='get_reviews_client'),
 ]
