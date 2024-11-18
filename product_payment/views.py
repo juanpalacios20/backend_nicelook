@@ -93,6 +93,10 @@ def create_product_payment_option2(request, establisment_id, client_id):
         return JsonResponse({'error': 'Producto no encontrado'}, status=404)
     payment = Product_payment.objects.filter(client=client, state=True).first()
     paymentD = ProductPaymentDetail.objects.filter(payment=payment, product=product_pay).first()
+    
+    if product_pay.quantity == 0:
+        return JsonResponse({'error': 'Existencias agotadas'}, status=404)
+    
     if payment:
             try:
                 if paymentD:
@@ -189,11 +193,20 @@ def details (request, payment_id):
     try:
         data = []
         payment = Product_payment.objects.get(id=payment_id)
-        serializer = ProductPaymentSerializer(payment)
-        data.append({
-            'info': serializer.data
-        })
-        return JsonResponse(serializer.data, status=200)
+        details = ProductPaymentDetail.objects.filter(payment=payment)
+        for d in details:
+            print(d.product)
+            image = ImageProduct.objects.filter(id_product=d.product).first()
+            if not image:
+                image = 0
+            serializer = ProductPaymentSerializer(payment)
+            data.append({
+                'name': d.product.name,
+                'info': serializer.data,
+                'quantity': d.quantity,
+                'image': image
+            })
+        return JsonResponse(data, safe=False, status=200)
     except Product_payment.DoesNotExist:
         return JsonResponse({'error': 'Compra no encontrada'}, status=404)
     except Exception as e:
