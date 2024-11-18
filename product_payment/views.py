@@ -192,19 +192,19 @@ def details (request):
     #Este metodo es para ver los detalles de la compra
     try:
         data = []
-        payment = Product_payment.objects.get(state=True)
+        payment = Product_payment.objects.filter(state=True).first()
         details = ProductPaymentDetail.objects.filter(payment=payment)
         for d in details:
-            print(d.product)
             image = ImageProduct.objects.filter(id_product=d.product).first()
             if not image:
                 image = 0
             serializer = ProductPaymentSerializer(payment)
             data.append({
                 'name': d.product.name,
-                'info': serializer.data,
-                'quantity': d.quantity,
-                'image': image
+                'image': image,
+                'description': d.product.description,
+                'price': d.product.price,
+                'quantity': d.quantity
             })
         return JsonResponse(data, safe=False, status=200)
     except Product_payment.DoesNotExist:
@@ -217,7 +217,7 @@ def details (request):
 def cancel_payment(request):
     #Este metodo es para cancelar la compra
     try:
-        payment = Product_payment.objects.get(state=True)
+        payment = Product_payment.objects.filter(state=True).first()
         print("hola")
         detail = ProductPaymentDetail.objects.filter(payment=payment)
         for d in detail:
@@ -237,7 +237,7 @@ def cancel_payment(request):
 def  delete_product_of_payment(request):
     #Este metodo es para eliminar un producto (cantidad) de la compra
     try:
-        payment = Product_payment.objects.get(state=True)
+        payment = Product_payment.objects.filter(state=True).first()
         data = request.data
         product_code = data.get('code')
         if not payment:
@@ -267,7 +267,7 @@ def  delete_product_of_payment(request):
 def complete_payment(request):
     #Este metodo es para completar la compra y enviar la factura con los detalles
     try:
-        payment = Product_payment.objects.get(state=True)
+        payment = Product_payment.objects.filter(state=True).first()
         payment.state = False
         payment.save()
         
@@ -434,3 +434,26 @@ def list_products(request, establisment_id):
             {"error": f"Error en el servidor: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+        
+@api_view(["DELETE"])
+def delete_product(request, product_id):
+    try:
+        # Busca el producto dinámicamente con el ID proporcionado
+        product = Product.objects.get(id=product_id)
+        
+        # Encuentra pagos asociados al producto
+        payments = Product_payment.objects.filter(products=product, state=True)
+        
+        # Valida si hay detalles de pagos asociados
+        details = ProductPaymentDetail.objects.filter(payment__in=payments).first()
+        if not details:
+            return Response({'message': 'No payment details found for this product'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Elimina el detalle encontrado
+        details.delete()
+        
+        return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
+    except Product.DoesNotExist:
+        return Response({'message': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
