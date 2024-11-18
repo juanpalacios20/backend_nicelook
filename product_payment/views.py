@@ -391,7 +391,6 @@ def list_products(request, establisment_id):
         for p in products:
             if p.quantity == 0:
                 p.save()
-                p.delete()
 
         data = []
         for product in products:
@@ -406,24 +405,25 @@ def list_products(request, establisment_id):
             if not image:
                 image = 0
                 contador = 0
-            data.append({
-                    "id": product.id,
-                    "name": product.name,
-                    "description": product.description,
-                    "price": product.price,
-                    "brand": product.brand,
-                    "distributor": product.distributor,
-                    "entry_date": product.entry_date,
-                    "expiration_date": product.expiration_date,
-                    "quantity": product.quantity,
-                    "estate": product.estate,
-                    "discount": product.discount,
-                    "purchase_price": product.purchase_price,
-                    "code": product.code,
-                    "image": image,
-                    "review": rating,
-                    "establisment": product.establisment.id
-                })
+            if product.quantity > 0:
+                data.append({
+                        "id": product.id,
+                        "name": product.name,
+                        "description": product.description,
+                        "price": product.price,
+                        "brand": product.brand,
+                        "distributor": product.distributor,
+                        "entry_date": product.entry_date,
+                        "expiration_date": product.expiration_date,
+                        "quantity": product.quantity,
+                        "estate": product.estate,
+                        "discount": product.discount,
+                        "purchase_price": product.purchase_price,
+                        "code": product.code,
+                        "image": image,
+                        "review": rating,
+                        "establisment": product.establisment.id
+                    })
 
         return Response(
             {"products": data},
