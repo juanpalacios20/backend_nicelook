@@ -214,10 +214,10 @@ def details (request):
     
 @csrf_exempt
 @api_view(['DELETE'])
-def cancel_payment(request, payment_id):
+def cancel_payment(request):
     #Este metodo es para cancelar la compra
     try:
-        payment = Product_payment.objects.get(id=payment_id)
+        payment = Product_payment.objects.get(state=True)
         print("hola")
         detail = ProductPaymentDetail.objects.filter(payment=payment)
         for d in detail:
@@ -234,10 +234,10 @@ def cancel_payment(request, payment_id):
         return JsonResponse({'error': str(e)}, status=500)
     
 @api_view(['DELETE'])
-def  delete_product_of_payment(request, payment_id):
+def  delete_product_of_payment(request,):
     #Este metodo es para eliminar un producto (cantidad) de la compra
     try:
-        payment = Product_payment.objects.get(id=payment_id)
+        payment = Product_payment.objects.get(state=True)
         data = request.data
         product_code = data.get('code')
         if not payment:
@@ -264,10 +264,10 @@ def  delete_product_of_payment(request, payment_id):
     
 @csrf_exempt
 @api_view(['POST'])
-def complete_payment(request, payment_id):
+def complete_payment(request):
     #Este metodo es para completar la compra y enviar la factura con los detalles
     try:
-        payment = Product_payment.objects.get(id=payment_id)
+        payment = Product_payment.objects.get(state=True)
         payment.state = False
         payment.save()
         
