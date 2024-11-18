@@ -76,9 +76,10 @@ def create_product_payment_option2(request, establisment_id, client_id):
     #Este metodo es para meter todos los productos al carrito 1 por 1
     establisment = Establisment.objects.get(id=establisment_id)
     client = Client.objects.get(id=client_id)
-    data = request.data
-    product_code = data.get('code')
-    product_pay = Product.objects.get(id=product_code)
+    product_code = request.data.get('code')
+    print(product_code)
+    print("hola")
+    product_pay = Product.objects.get(code=product_code)
     if not establisment_id and not client_id:
         return JsonResponse({'error': 'Establecimiento y cliente no proporcionados'}, status=400)
     if not establisment:
@@ -87,6 +88,8 @@ def create_product_payment_option2(request, establisment_id, client_id):
         return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
     if not product_code:
         return JsonResponse({'error': 'No se proporcionaron productos'}, status=400)
+    if not product_pay:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
     payment = Product_payment.objects.filter(client=client, state=True).first()
     paymentD = ProductPaymentDetail.objects.filter(payment=payment, product=product_pay).first()
     if payment:
