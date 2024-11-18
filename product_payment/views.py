@@ -188,11 +188,11 @@ def agregate_product(request, payment_id):
 
 @csrf_exempt
 @api_view(['GET'])
-def details (request, payment_id):
+def details (request):
     #Este metodo es para ver los detalles de la compra
     try:
         data = []
-        payment = Product_payment.objects.get(id=payment_id)
+        payment = Product_payment.objects.get(state=True)
         details = ProductPaymentDetail.objects.filter(payment=payment)
         for d in details:
             print(d.product)
