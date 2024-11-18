@@ -234,7 +234,7 @@ def cancel_payment(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @api_view(['DELETE'])
-def  delete_product_of_payment(request,):
+def  delete_product_of_payment(request):
     #Este metodo es para eliminar un producto (cantidad) de la compra
     try:
         payment = Product_payment.objects.get(state=True)
