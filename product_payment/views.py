@@ -204,7 +204,8 @@ def details (request):
                 'image': image,
                 'description': d.product.description,
                 'price': d.product.price,
-                'quantity': d.quantity
+                'quantity': d.quantity,
+                'code': d.product.code
             })
         return JsonResponse(data, safe=False, status=200)
     except Product_payment.DoesNotExist:
@@ -436,10 +437,10 @@ def list_products(request, establisment_id):
         )
         
 @api_view(["DELETE"])
-def delete_product(request, product_id):
+def delete_product(request, code):
     try:
         # Busca el producto dinámicamente con el ID proporcionado
-        product = Product.objects.get(id=product_id)
+        product = Product.objects.get(code=code)
         
         # Encuentra pagos asociados al producto
         payments = Product_payment.objects.filter(products=product, state=True)
