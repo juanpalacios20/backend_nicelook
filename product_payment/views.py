@@ -6,6 +6,7 @@ from client.models import Client
 from establisment.models import Establisment
 from product.models import Product
 from product.serializers import productSerializer
+import productPaymentDetail
 from productPaymentDetail.models import ProductPaymentDetail
 import product_payment
 from review_product.models import ReviewProduct
@@ -108,6 +109,8 @@ def create_product_payment_option2(request, establisment_id, client_id):
                 discountt = (product_pay.price * product_pay.discount)#/100        
                 payment.discount = discountt
                 payment.save()
+                product_pay.quantity -= 1
+                product_pay.save()
                 return JsonResponse({'mensaje': 'Compra creada exitosamente'}, status=201)
             except Exception as e:
                 return JsonResponse({'error': str(e)}, status=500)
@@ -129,8 +132,8 @@ def create_product_payment_option2(request, establisment_id, client_id):
                 product=product_pay,
                 quantity=1.0
             )
-        #product_pay.quantity -= 1
-        #product_pay.save()
+        product_pay.quantity -= 1
+        product_pay.save()
         discountt += (product_pay.price * product_pay.discount)#/100
         payment.discount = discountt
         payment.save()
@@ -202,6 +205,14 @@ def cancel_payment(request, payment_id):
     #Este metodo es para cancelar la compra
     try:
         payment = Product_payment.objects.get(id=payment_id)
+        print("hola")
+        detail = ProductPaymentDetail.objects.filter(payment=payment)
+        for d in detail:
+            print("hola")
+            product_pay = Product.objects.get(id=d.product.id)
+            print("hola")
+            product_pay.quantity += d.quantity
+            product_pay.save()
         payment.delete()
         return JsonResponse({'mensaje': 'Compra cancelada exitosamente'}, status=200)
     except Product_payment.DoesNotExist:
@@ -227,6 +238,9 @@ def  delete_product_of_payment(request, payment_id):
         if not paymentD:
             return JsonResponse({'error': 'Producto no encontrado'}, status=404)
         paymentD.quantity -= 1.0
+        paymentD.save()
+        product_pay.quantity += 1
+        product_pay.save()
         if paymentD.quantity == 0:
             paymentD.delete()
         return JsonResponse({'error': 'Producto eliminado'}, status=404)
@@ -342,7 +356,7 @@ def filter_products(request, establisment_id):
                     "purchase_price": product.purchase_price,
                     "code": product.code,
                     "image": image,
-                    "review": rating
+                    "reviews": rating
                 })
 
         return Response(
