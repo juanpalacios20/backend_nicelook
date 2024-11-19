@@ -22,6 +22,10 @@ from employee_image.models import EmployeeImage
 from review_employee.models import ReviewEmployee
 from review_employee.serializers import reviewEmployeeSerializer
 from image.models import Image
+from review.models import Review
+from review.serializers import reviewSerializer
+from schedule.models import Time
+from schedule.serializers import timeSerializer
 
 
 # Create your views here.
@@ -223,48 +227,26 @@ def getInfoEstablisment(request):
         # Obtén el establecimiento 'Stylos'
         stylos = Establisment.objects.get(name='Stylos')
         stylosSerializer = establismentSerializer(stylos)
-        
-        # Obtén los empleados de 'Stylos'
-        employes = Employee.objects.filter(establisment=stylos)
-        employesSerializer = EmployeeSerializer(employes, many=True)
 
         services = Service.objects.filter(establisment=stylos)
         servicesSerializer = serviceSerializer(services, many=True)
 
         information_establishment['stylos_info'] = stylosSerializer.data
-        information_establishment['employes_info'] = employesSerializer.data
         information_establishment['services_info'] = servicesSerializer.data
-        for employe in information_establishment['employes_info']:
-            del employe['establisment']
-            del employe['user']['username']
-            del employe['googleid']
-            del employe['accestoken']
-            del employe['token']
-            services = EmployeeServices.objects.filter(employee=employe['id'])
-            if services:
-                employe['employee_services'] = employeeServicesSerializer(services, many=True).data
-                for service in employe['employee_services']:
-                    del service['commission']
-                    del service['employee']
-                    del service['service']['establisment']
-                    del service['service']['commission']
-            reviews = ReviewEmployee.objects.filter(employee=employe['id'])
-            if reviews:
-                data = reviewEmployeeSerializer(reviews, many=True).data
-                rating = 0
-                count = 1
-                for review in data:
-                    nota = review['rating']
-                    rating = int(nota)/ count
-                    count += 1
-                employe['rating'] = rating
-            image = EmployeeImage.objects.filter(establishment_id=stylos.id, employee_id=employe['id']).first()
-            if image:
-                imageBase64 = base64.b64encode(image.image).decode('utf-8')
-                mime_type = "image/jpeg"
-                image_base64_url = f"data:{mime_type};base64,{imageBase64}"
-                employe['image'] = image_base64_url
         
+        reviews = Review.objects.filter(establisment=stylos)
+        if reviews.count() != 0:
+            reviewsSerializer = reviewSerializer(reviews, many=True)
+            rating = 0
+            count = 1
+            for review in reviewsSerializer.data:
+                nota = review['rating']
+                rating = int(nota)/ count
+                count += 1
+            information_establishment['rating'] = rating
+            information_establishment['reviews'] = count - 1
+        
+       
         #obtener imagenes del establecimiento
         image_logo = Image.objects.filter(establisment=stylos, code = 1).first()
         if image_logo:
@@ -296,36 +278,109 @@ def getInfoEmployee(request):
         id = request.query_params.get('id_employee')
         employee = Employee.objects.get(id=id)
         employeeSerializer = EmployeeSerializer(employee)
+        employe_data = {}
         data = employeeSerializer.data
-        del data['establisment']
-        del data['user']['username']
-        del data['googleid']
-        del data['accestoken']
-        del data['token']
-        services = EmployeeServices.objects.filter(employee=id)
-        if services:
-            data['employee_services'] = employeeServicesSerializer(services, many=True).data
-            for service in data['employee_services']:
-                del service['commission']
-                del service['employee']
-                del service['service']['establisment']
-                del service['service']['commission']
+
+        employe_data['id'] = data['id']
+        employe_data['first_name'] = data['user']['first_name']
+        employe_data['last_name'] = data['user']['last_name']
+        employe_data['email'] = data['user']['email']
+        employe_data['phone'] = data['phone']
+        employe_data['state'] = data['state']
+        employe_data['code'] = data['code']
+
+        # Inicializar `image` para evitar el error
+        image = None
+
+        # Obtener reseñas
         reviews = ReviewEmployee.objects.filter(employee=id)
         if reviews:
             data_review = reviewEmployeeSerializer(reviews, many=True).data
             rating = 0
-            count = 1
+            count = 0
             for review in data_review:
                 nota = review['rating']
-                rating = int(nota)/ count
+                rating += int(nota)
                 count += 1
-            data['rating'] = rating
-        image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
-        if image:
+            # Calcular el promedio de calificaciones
+            employe_data['rating'] = rating / count if count > 0 else 0
+            employe_data['reviews'] = count
+
+            # Obtener la imagen del empleado
+            image = EmployeeImage.objects.filter(
+                establishment_id=employee.establisment.id, 
+                employee_id=employee.id
+            ).first()
+
+        # Convertir la imagen a base64 si existe
+        if image is not None:
             imageBase64 = base64.b64encode(image.image).decode('utf-8')
             mime_type = "image/jpeg"
             image_base64_url = f"data:{mime_type};base64,{imageBase64}"
-            data['image'] = image_base64_url
-        return Response({'employee': data}, status=status.HTTP_200_OK)
+            employe_data['image'] = image_base64_url
+
+        # Obtener el horario del empleado
+        time = Time.objects.filter(employee=id).first()
+        if time:
+            employe_data['time'] = timeSerializer(time).data
+            del employe_data['time']['employee']
+
+        # Obtener los servicios del empleado
+        services = EmployeeServices.objects.filter(employee=id)
+        if services:
+            employe_data['services'] = employeeServicesSerializer(services, many=True).data
+            for service in employe_data['services']:
+                del service['commission']
+                del service['employee']
+                del service['service']['establisment']
+                del service['service']['commission']
+
+        return Response(employe_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    
+@api_view(['GET'])
+def getEmployees(request):
+    try:
+        establisment = Establisment.objects.get(name="Stylos")
+        employees = Employee.objects.filter(establisment=establisment)
+        data = EmployeeSerializer(employees, many=True).data
+        for employee in data:
+            del employee['establisment']
+            del employee['user']['username']
+            del employee['googleid']
+            del employee['accestoken']
+            del employee['token']
+            services = EmployeeServices.objects.filter(employee=employee['id'])
+            if services:
+                employee['employee_services'] = employeeServicesSerializer(services, many=True).data
+                for service in employee['employee_services']:
+                    del service['commission']
+                    del service['employee']
+                    del service['service']['establisment']
+                    del service['service']['commission']
+            reviews = ReviewEmployee.objects.filter(employee=employee['id'])
+            if reviews:
+                data_review = reviewEmployeeSerializer(reviews, many=True).data
+                rating = 0
+                count = 1
+                for review in data_review:
+                    nota = review['rating']
+                    rating = int(nota)/ count
+                    count += 1
+                employee['rating'] = rating
+                employee['reviews'] = count - 1
+            image = EmployeeImage.objects.filter(establishment_id=establisment.id, employee_id=employee['id']).first()
+            if image:
+                imageBase64 = base64.b64encode(image.image).decode('utf-8')
+                mime_type = "image/jpeg"
+                image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+                employee['image'] = image_base64_url
+            time = Time.objects.filter(employee=employee['id']).first()
+            if time:
+                employee['time'] = timeSerializer(time).data
+        return Response({'employeesList': data}, status=status.HTTP_200_OK)
     except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
