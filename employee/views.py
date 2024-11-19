@@ -50,15 +50,15 @@ def employeeAddService(request, employee_id):
         
         # Verificar que el servicio pertenece al establecimiento especificado
         if service.establisment.id != establisment_id:
-            return Response({"error": "The service does not belong to the establishment indicated."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "El servicio no pertenece al establecimiento indicado."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Verificar que el estado del servicio sea True
         if not service.state:
-            return Response({"error": "The service is not active."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "El servicio no está activo."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Verificar si ya existe la relación para evitar duplicados
         if EmployeeServices.objects.filter(employee=employee, service=service).exists():
-            return Response({"message": "The service is already assigned to this employee."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "El servicio ya está asignado a este empleado."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Crear la relación con la comisión del servicio
         employee_service = EmployeeServices.objects.create(
@@ -72,9 +72,9 @@ def employeeAddService(request, employee_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     except Employee.DoesNotExist:
-        return Response({"error": "Employee not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Service.DoesNotExist:
-        return Response({"error": "Service not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -83,7 +83,7 @@ def employeeAddService(request, employee_id):
 def update_employee(request):
     idUser = request.data.get('employee_id')
     if not idUser:
-        return Response({'error': 'El id del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El ID del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
         employee = Employee.objects.get(id=idUser)
@@ -166,7 +166,7 @@ def search_employees(request):
 def delete_employee(request):
     idUser = request.query_params.get('idUser')
     if not idUser:
-        return Response({'message': 'El id del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'El ID del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
         user = User.objects.get(id=idUser)
@@ -188,7 +188,7 @@ def delete_employee(request):
 def get_employees(request):
     idUser = request.query_params.get('idUser')
     if not idUser:
-        return Response({'error': 'El id del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El ID del usuario es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
         user = User.objects.get(id=idUser)
@@ -249,13 +249,13 @@ def create_employee(request, establisment_id):
 
     # Validar campos obligatorios
     if not name or not last_name or not email or not phone or not especialty:
-        return Response({'error': 'Los campos nombre, apellido, email, teléfono y especialidad son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Los campos nombre, apellido, email, teléfono y especialidad son obligatorios.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar email
     try:
         validate_email(email)
     except ValidationError:
-        return Response({'error': 'Formato de email no válido'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Formato de email no válido.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar teléfono
     try:
@@ -266,19 +266,19 @@ def create_employee(request, establisment_id):
     try:
         establisment = Establisment.objects.get(id=establisment_id)
     except Establisment.DoesNotExist:
-        return Response({'error': 'Establecimiento no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Establecimiento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
 
     # Verificar si el email ya está registrado
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El email ya está registrado.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar agenda si se proporciona
     if schedule:
         try:
             schedule = Schedule.objects.get(id=schedule)
         except Schedule.DoesNotExist:
-            return Response({'error': 'Agenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Agenda no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinar el siguiente código para el empleado
     next_code = Employee.objects.aggregate(Max('code'))['code__max'] or 0
@@ -288,7 +288,7 @@ def create_employee(request, establisment_id):
     # Creación de usuario
     username = f"{name}{last_name}{next_code}"
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'El nombre de usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El nombre de usuario ya existe.'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         with transaction.atomic():
@@ -335,12 +335,12 @@ def upload_employee_photo(request, establisment_id, employee_id):
             if new_image:
                image.image = new_image.read()
             image.save()
-            return JsonResponse({'succes': 'The photo has been update successfully'}, status=200)
+            return JsonResponse({'succes': 'La imagen ha sido actualizada con éxito.'}, status=200)
 
     image_file = request.FILES["image"]
 
     if not image_file:
-        return JsonResponse({'error': 'The image has not been provided'}, status=400)
+        return JsonResponse({'error': 'La imagen no ha sido proporcionada.'}, status=400)
     #según mi planteamiento, 1 es para el logo y 2 es para el banner
 
     EmployeeImage.objects.create(
@@ -349,7 +349,7 @@ def upload_employee_photo(request, establisment_id, employee_id):
         image=image_file.read(),
     )
 
-    return JsonResponse({'mensaje': 'The photo has been uploaded successfully'}, status=201)
+    return JsonResponse({'mensaje': 'La imagen ha sido subida con éxito.'}, status=201)
 
 @api_view(['GET'])
 def get_photo(request, establisment_id, employee_id):
@@ -358,7 +358,7 @@ def get_photo(request, establisment_id, employee_id):
         image_obj = EmployeeImage.objects.filter(establishment_id=establisment_id, employee_id=employee_id ).first()
 
         if not image_obj:
-            return JsonResponse({'error': 'Image not found'}, status=404)
+            return JsonResponse({'error': 'Imagen no encontrada'}, status=404)
 
         #convierte la imagen binaria a base64
         image_binaria = image_obj.image
@@ -383,12 +383,12 @@ def delete_photo(request, establisment_id, employee_id):
         image_obj = EmployeeImage.objects.filter(establishment_id=establisment, employee_id=employee).first()
 
         if not image_obj:
-            return JsonResponse({'error': 'Photo not found'}, status=404)
+            return JsonResponse({'error': 'Imagen no encontrada.'}, status=404)
 
 
         image_obj.delete()
 
-        return JsonResponse({'mensaje': 'Photo sucssefuly deleted'}, status=200)
+        return JsonResponse({'mensaje': 'La imagen se ha elimiando exitosamente.'}, status=200)
 
     except Establisment.DoesNotExist:
         return JsonResponse({'error': 'Establishment not found'}, status=404)
@@ -406,7 +406,7 @@ class EmployeeLogin(SocialLoginView):
         token_info_response = requests.get(token_info_url)
 
         if token_info_response.status_code != 200:
-            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Token invalido.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Si el token es válido, obtener los datos del usuario
         token_info = token_info_response.json()
@@ -417,23 +417,19 @@ class EmployeeLogin(SocialLoginView):
 
         # Verificar si el correo electrónico está verificado
         if not token_info.get('email_verified'):
-            return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El Email no esta verificado.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # Si no existe el usuario, crear uno nuevo
-            user = User.objects.create_user(email=email, first_name=first_name, last_name=last_name)
-            # Crear un objeto Employee asociado al usuario
-            Employee.objects.create(user=user)
+            # Si el usuario no existe, lanzar una excepción personalizada
+            return Response({'error': 'El usuario no existe'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Obtener el objeto Employee asociado al usuario
         try:
             employee = Employee.objects.get(user=user)
         except Employee.DoesNotExist:
-            # Si no existe el objeto Employee, crear uno nuevo
-            code = uuid.uuid4().hex[:6].upper()
-            employee = Employee.objects.create(user=user, state=True, googleid=google_id, token=token, accestoken=token_info.get('at_hash'), establisment=Establisment.objects.first(),code=code)
+            # Si el empleado no existe, lanzar una excepción personalizada
+            return Response({'error': 'El usuario no se enceuntra registrado como empleado'}, status=status.HTTP_404_NOT_FOUND)
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)

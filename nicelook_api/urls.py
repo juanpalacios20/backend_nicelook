@@ -44,4 +44,6 @@ urlpatterns = [
     path('Product/deleteImage/', views.deleteImageProduct, name='delete_image_product'),
     path('employee_services/', include('employee_services.urls')), 
     path('receptionist/', include('receptionist.urls')),
+    path('review_employee/', include('review_employee.urls')),
+    path('client/', include('client.urls')),
 ]
