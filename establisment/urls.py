@@ -13,4 +13,5 @@ urlpatterns = [
     path('info_establishment/', views.getInfoEstablisment),
     path('get_info_employee/', views.getInfoEmployee),
     path('get_employees/', views.getEmployees),
+    path('get_available/<int:id_employee>/', views.getAvailableEmployees),
 ]

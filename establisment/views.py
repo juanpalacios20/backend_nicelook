@@ -271,7 +271,122 @@ def getInfoEstablisment(request):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+@api_view(['GET'])
+def getAvailableEmployees(request, id_employee):
+    try:
+        # Obtener parámetros de la consulta
+        year = int(request.query_params.get('year'))
+        month = int(request.query_params.get('month'))
+        day = int(request.query_params.get('day'))
+        new_date = datetime.datetime(year=year, month=month, day=day)
+
+        # Obtener empleado, horario y citas
+        employee = Employee.objects.get(id=id_employee)
+        time_ranges = Time.objects.filter(employee=employee)
+        appointments = Appointment.objects.filter(date=new_date, employee=employee, estate__icontains='Pendiente').order_by('time')
+
+        disponibilidad = []
+
+        # Calcular disponibilidad para cada rango de tiempo
+        for time_range in time_ranges:
+            start_time = time_range.time_start_day_one
+            end_time = time_range.time_end_day_one
+            if time_range.time_start_day_two and time_range.time_end_day_two:
+                start_time_two = time_range.time_start_day_two
+                end_time_two = time_range.time_end_day_two
+
+            # Verificar disponibilidad en el primer turno (8 a 12)
+            current_start_time = start_time
+            for appointment in appointments:
+                # Verificar las citas dentro del primer turno
+                if appointment.time.time() >= current_start_time and appointment.time.time() < end_time:
+                    # Si hay un espacio antes de la cita
+                    if appointment.time.time() > current_start_time:
+                        disponibilidad.append((current_start_time, appointment.time.time()))
+                    # Actualizar el tiempo de inicio después de la cita
+                    contador = datetime.timedelta(hours=0, minutes=0, seconds=0)
+                    for s in appointment.services.all():
+                        service_duration = EmployeeServices.objects.filter(
+                            employee=employee, service=s).first().duration
+                        contador += service_duration
+                    current_start_time = (datetime.datetime.combine(new_date, appointment.time.time()) + contador).time()
+
+            # Agregar tiempo restante después de la última cita en el primer turno
+            if current_start_time < end_time:
+                disponibilidad.append((current_start_time, end_time))
+
+            # Verificar disponibilidad en el segundo turno (14 a 17)
+            if time_range.double_day:
+                current_start_time_two = start_time_two
+                for appointment in appointments:
+                    # Verificar las citas dentro del segundo turno
+                    if appointment.time.time() >= current_start_time_two and appointment.time.time() < end_time_two:
+                        # Si hay un espacio antes de la cita
+                        if appointment.time.time() > current_start_time_two:
+                            disponibilidad.append((current_start_time_two, appointment.time.time()))
+                        # Actualizar el tiempo de inicio después de la cita
+                        service_duration = EmployeeServices.objects.filter(
+                            employee=employee, service__in=appointment.services.all()).first().duration
+                        current_start_time_two = (datetime.datetime.combine(new_date, appointment.time.time()) + service_duration).time()
+
+                # Agregar tiempo restante después de la última cita en el segundo turno
+                if current_start_time_two < end_time_two:
+                    disponibilidad.append((current_start_time_two, end_time_two))
+
+        # Formatear la respuesta con los intervalos de disponibilidad
+        formatted_disponibilidad = [
+            [str(time[0]), str(time[1])] for time in disponibilidad
+        ]
+        
+        return Response({'disponibilidad': formatted_disponibilidad}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+def calcular_disponibilidad_por_turno(turno_start, turno_end, appointments, new_date, employee):
+    """
+    Calcula los intervalos de disponibilidad dentro de un turno específico.
+    """
+    disponibilidad = []
+    turno_start_time = turno_start
+    turno_end_time = turno_end
+
+    for appointment in appointments:
+        for service in appointment.services.all():
+            service_duration = EmployeeServices.objects.filter(
+                employee=employee, service=service
+            ).first().duration
+
+            # Convertir appointment.time a datetime.time
+            appointment_start = datetime.datetime.combine(new_date, appointment.time.time())
+            appointment_end = appointment_start + service_duration
+
+            # Convertir de nuevo a time para las comparaciones
+            appointment_start = appointment_start.time()
+            appointment_end = appointment_end.time()
+
+            # Si hay un espacio antes de la cita
+            if appointment_start > turno_start_time:
+                disponibilidad.append((turno_start_time, appointment_start))
+
+            # Actualizar el inicio del rango disponible
+            turno_start_time = max(turno_start_time, appointment_end)
+
+    # Agregar tiempo restante después de la última cita
+    if turno_start_time < turno_end_time:
+        disponibilidad.append((turno_start_time, turno_end_time))
+
+    return disponibilidad
+
+
+
+
+
 @api_view(['GET'])
 def getInfoEmployee(request):
     try:
@@ -320,6 +435,7 @@ def getInfoEmployee(request):
             employe_data['image'] = image_base64_url
 
         # Obtener el horario del empleado
+        
         time = Time.objects.filter(employee=employee).first()
         print(time)
         if time:
@@ -339,7 +455,7 @@ def getInfoEmployee(request):
         return Response(employe_data, status=status.HTTP_200_OK)
 
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
 
     
 @api_view(['GET'])

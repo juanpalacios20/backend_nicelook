@@ -15,7 +15,6 @@ class Appointment (models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     services = models.ManyToManyField(Service)
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
     method = models.CharField(max_length=50)
     
     def __str__(self):
