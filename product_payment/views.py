@@ -1,3 +1,4 @@
+import base64
 from django.shortcuts import render
 from rest_framework import viewsets
 from django.http import JsonResponse
@@ -345,6 +346,8 @@ def filter_products(request, establisment_id):
         data = []
         for product in products:
             image = ImageProduct.objects.filter(id_product=product).first()
+            image_product = image.image
+            image_product_url = f'data:image/png;base64,{base64.b64encode(image_product).decode("utf-8")}'
             review = ReviewProduct.objects.filter(product=product)
             contador = 0
             rating = 0
@@ -353,7 +356,7 @@ def filter_products(request, establisment_id):
                 rating += r.rating
             rating = rating/contador
             if not image:
-                image = 0
+                image_product_url = "Imagen del producto"
                 contador = 0
             data.append({
                     "id": product.id,
@@ -369,7 +372,7 @@ def filter_products(request, establisment_id):
                     "discount": product.discount,
                     "purchase_price": product.purchase_price,
                     "code": product.code,
-                    "image": image,
+                    "image": image_product_url,
                     "reviews": rating
                 })
 
@@ -396,6 +399,8 @@ def list_products(request, establisment_id):
         data = []
         for product in products:
             image = ImageProduct.objects.filter(id_product=product).first()
+            image_product = image.image
+            image_product_url = f'data:image/png;base64,{base64.b64encode(image_product).decode("utf-8")}'
             review = ReviewProduct.objects.filter(product=product)
             contador = 0
             rating = 0
@@ -404,7 +409,7 @@ def list_products(request, establisment_id):
                 rating += r.rating
             rating = rating/contador
             if not image:
-                image = 0
+                image_product_url = "Imagen del producto"
                 contador = 0
             if product.quantity > 0:
                 data.append({
@@ -421,7 +426,7 @@ def list_products(request, establisment_id):
                         "discount": product.discount,
                         "purchase_price": product.purchase_price,
                         "code": product.code,
-                        "image": image,
+                        "image": image_product_url,
                         "review": rating,
                         "establisment": product.establisment.id
                     })
@@ -451,6 +456,8 @@ def delete_product(request, code):
             return Response({'message': 'No payment details found for this product'}, status=status.HTTP_404_NOT_FOUND)
         
         # Elimina el detalle encontrado
+        product.quantity += details.quantity
+        product.save()
         details.delete()
         
         return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
