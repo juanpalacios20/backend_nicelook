@@ -1,7 +1,6 @@
 from django.db import models
 from employee.models import Employee
 from establisment.models import Establisment
-from schedule.models import Schedule
 from service.models import Service
 from client.models import Client
 

@@ -129,3 +129,28 @@ def deleteProduct(request):
         return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def alert(request, id_establisment):
+    try:
+        # Obtener los productos del establecimiento
+        products = Product.objects.filter(establisment=Establisment.objects.get(id=id_establisment)) 
+        
+        # Lista para almacenar los productos con menos de 5 unidades
+        low_stock_products = []
+
+        # Revisar cada producto
+        for p in products:
+            if p.quantity <= 5:
+                low_stock_products.append(p.name)
+
+        # Verificar si hay productos con baja cantidad
+        if low_stock_products:
+            return Response({
+                'message': 'El producto/los productos ' + ', '.join(low_stock_products) + ' están propensos a agotar existencias (tienen menos de 5 unidades)'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'No hay productos con menos de 5 unidades'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from establisment.models import Establisment
 from employee.models import Employee
-from schedule.models import Schedule
 from service.models import Service
 from client.models import Client
 from .models import Appointment
