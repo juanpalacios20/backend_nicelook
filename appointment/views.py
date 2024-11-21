@@ -219,14 +219,24 @@ from decouple import config
 @csrf_exempt
 def create_appointment(request):
     print("Entrando")
+    #Obtenemos los datos de la solicitud
     employee_id = request.data.get('employee_id')
+
     year = request.data.get('year')
     month = request.data.get('month')
     day = request.data.get('day')
-    new_date = date(year=int(year), month=int(month), day=int(day))
+    
     time = request.data.get('time')
-    time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
+    
     services = request.data.get('services')
+    
+    client_id = request.data.get('cliente_id')
+    
+    #Construimos fecha y hora
+    new_date = date(year=int(year), month=int(month), day=int(day))
+    time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
+    
+    print(services)
     try:
         employee = Employee.objects.get(id=employee_id)
         print(employee)
@@ -327,7 +337,24 @@ def create_appointment(request):
         'Content-Type': 'application/json'
     }
 
-    # Realizar la solicitud para crear el evento
+
+    start_date = "2024-11-20"
+    end_date = "2024-11-20"
+    print("Evento creado en Google Calendar.")
+    establishment = Establisment.objects.get(employee=employee)
+    schedule = Schedule.objects.create(establisment=establishment, start_date=start_date, end_date=end_date)
+    client = Client.objects.get(id=client_id)
+    appointment = Appointment.objects.create(
+        client=client,
+        employee=employee,
+        date=new_date,
+        time=time,
+        establisment=establishment,
+        estate='Pendiente',
+        method='Efectivo',
+        schedule= schedule
+    )
+    
     print("Creando evento en Google Calendar...")
     response = requests.post(
         'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -344,40 +371,14 @@ def create_appointment(request):
             'details': response.json()  # Detalles del error si los hay
         }, status=500)
 
-    start_date = "2024-11-20"
-    end_date = "2024-11-20"
-    print("Evento creado en Google Calendar.")
-    establishment = Establisment.objects.get(id=request.data.get('establishment'))
-    schedule = Schedule.objects.create(establisment=establishment, start_date=start_date, end_date=end_date)
-    client = Client.objects.get(id=request.data.get('cliente_id'))
-    appointment = Appointment.objects.create(
-        client=client,
-        employee=employee,
-        date=new_date,
-        time=time,
-        establisment=establishment,
-        estate='Pendiente',
-        method='Efectivo',
-        schedule= schedule
-    )
-
-    print("Creando evento en Google Calendar...")
-    response = requests.post(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-        headers=headers,
-        json=event_data
-    )
-    print(response.json())
-
     print("Cita creada en la base de datos.")
-    # Asociar los servicios
-    services = Service.objects.filter(id=request.data.get('services'))
-    appointment.services.set(services)
+    for service_id in services:
+        service = Service.objects.get(id=service_id)
+        appointment.services.add(service)
+    
     appointment.save()
 
     # Retornar respuesta exitosa
     return Response({
         'message': 'Cita creada y agendada en Google Calendar exitosamente.',
-        'appointment_id': appointment.id,
-        'calendar_event_id': response.json().get('id')  # El ID del evento en Google Calendar
     })

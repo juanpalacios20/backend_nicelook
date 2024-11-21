@@ -44,6 +44,7 @@ class ClientLoginView(APIView):
             # Intentar obtener o crear el usuario y el objeto Client
             user, created = User.objects.get_or_create(email=email)
             if created:
+                user.username = first_name + " " + last_name + str(user.id)
                 user.first_name = first_name
                 user.last_name = last_name
                 user.set_unusable_password()  # Ya que el usuario utiliza Google para autenticarse
@@ -72,16 +73,15 @@ class ClientLoginView(APIView):
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
-
         # Agregar información adicional al token
         refresh['email'] = user.email
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
         refresh['google_id'] = client.googleid if token else None
-
         # Responder con el token de acceso y la información adicional
         return Response({
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
             'email': refresh.access_token.get('email'),
+            'client_id': client.id
         }, status=status.HTTP_200_OK)

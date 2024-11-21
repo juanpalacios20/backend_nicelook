@@ -225,7 +225,7 @@ def getInfoEstablisment(request):
             "image_banner": " "
         }
         # Obtén el establecimiento 'Stylos'
-        stylos = Establisment.objects.get(name='Stylos')
+        stylos = Establisment.objects.get(name="Stylo's Peluquería & Barbería")
         stylosSerializer = establismentSerializer(stylos)
 
         services = Service.objects.filter(establisment=stylos)
@@ -320,7 +320,8 @@ def getInfoEmployee(request):
             employe_data['image'] = image_base64_url
 
         # Obtener el horario del empleado
-        time = Time.objects.filter(employee=id).first()
+        time = Time.objects.filter(employee=employee).first()
+        print(time)
         if time:
             employe_data['time'] = timeSerializer(time).data
             del employe_data['time']['employee']
@@ -344,7 +345,7 @@ def getInfoEmployee(request):
 @api_view(['GET'])
 def getEmployees(request):
     try:
-        establisment = Establisment.objects.get(name="Stylos")
+        establisment = Establisment.objects.get(name="Stylo's Peluquería & Barbería")
         employees = Employee.objects.filter(establisment=establisment)
         data = EmployeeSerializer(employees, many=True).data
         for employee in data:
