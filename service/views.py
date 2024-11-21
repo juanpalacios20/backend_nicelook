@@ -210,3 +210,20 @@ def filter_by_category(request):
             {"error": f"Error en el servidor: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+        
+@api_view(["GET"])      
+def get_service(request, service_id):
+    try:
+        service = Service.objects.get(id=service_id)
+        serializer = serviceSerializer(service)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Service.DoesNotExist:
+        return Response(
+            {"error": "Servicio no encontrado."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error en el servidor: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
