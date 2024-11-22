@@ -31,7 +31,7 @@ from category.models import Category
 from service.models import Service
 from schedule.models import Time
 from django.views.decorators.csrf import csrf_exempt
-
+from datetime import timedelta
 from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -52,13 +52,25 @@ def employeeAddService(request, employee_id):
         # Obtener el ID del servicio y el ID del establecimiento desde la solicitud
         service_id = request.data.get('service_id')
         establisment_id = request.data.get('establisment_id')
+        hours = request.data.get('hours')
+        minutes = request.data.get('minutes')
+        
+        if hours is None or minutes is None:
+            return Response({"error": "Hours and minutes are required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Obtener el servicio que se desea agregar
         service = Service.objects.get(id=service_id)
+        establisment = Establisment.objects.get(id=establisment_id)
         
         # Verificar que el servicio pertenece al establecimiento especificado
-        if service.establisment.id != establisment_id:
+        print(service.establisment.id, establisment_id)
+        
+        if service.establisment.id == establisment.id:
+            print("si")
+        
+        if service.establisment.id != establisment.id:
             return Response({"error": "The service does not belong to the establishment indicated."}, status=status.HTTP_400_BAD_REQUEST)
+        
 
         # Verificar que el estado del servicio sea True
         if not service.state:
@@ -68,11 +80,16 @@ def employeeAddService(request, employee_id):
         if EmployeeServices.objects.filter(employee=employee, service=service).exists():
             return Response({"message": "The service is already assigned to this employee."}, status=status.HTTP_400_BAD_REQUEST)
         
+        if hours == 00:
+            duration = timedelta(minutes=minutes)
+        else:
+            duration = timedelta(hours=hours, minutes=minutes)
+        
         # Crear la relación con la comisión del servicio
         employee_service = EmployeeServices.objects.create(
             employee=employee,
             service=service,
-            commission=service.commission
+            duration=duration
         )
 
         # Serializar y devolver la respuesta

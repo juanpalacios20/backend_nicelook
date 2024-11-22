@@ -17,7 +17,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import date
 from datetime import datetime
-from schedule.models import Schedule, Time
+from schedule.models import Time
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
