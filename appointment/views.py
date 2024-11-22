@@ -218,7 +218,6 @@ from decouple import config
 @api_view(['POST'])
 @csrf_exempt
 def create_appointment(request):
-    print("Entrando")
     #Obtenemos los datos de la solicitud
     employee_id = request.data.get('employee_id')
 
@@ -236,17 +235,29 @@ def create_appointment(request):
     new_date = date(year=int(year), month=int(month), day=int(day))
     time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
     
-    print(services)
+    #Validamos que los campos requeridos estén presentes en la base de datos
     try:
         employee = Employee.objects.get(id=employee_id)
-        print(employee)
+        client = Client.objects.get(id=client_id)
+        times = Time.objects.filter(employee=employee)
+        establishment = Establisment.objects.get(employee=employee)
     except Employee.DoesNotExist:
         return Response({'error': 'Empleado no encontrado.'}, status=404)
-
+    except Client.DoesNotExist:
+        return Response({'error': 'Cliente no encontrado.'}, status=404)
+    except Time.DoesNotExist:
+        return Response({'error': 'Horario no encontrado.'}, status=404)
     except ValueError:
         return Response({'error': 'Formato de fecha o hora inválido. Use YYYY-MM-DD y HH:MM.'}, status=400)
     
-    times = Time.objects.filter(employee=employee)
+    services_list = []
+    for service_id in services:
+        try:
+            service = Service.objects.get(id=service_id)
+            services_list.append(service)
+        except Service.DoesNotExist:
+            return Response({'error': 'Servicio no encontrado.'}, status=404)
+    
     day_date = " "
     if new_date.weekday() == 0:
         day_date = "Lun"
@@ -263,6 +274,7 @@ def create_appointment(request):
     elif new_date.weekday() == 6:
         day_date = "Dom"
         
+    #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
         for time_entry in times:
             start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
@@ -280,104 +292,109 @@ def create_appointment(request):
                 if time.time() < start_hour_t1 or time.time() >= end_hour_t2 or time.time() < start_hour_t2 and time.time() >= end_hour_t1:
                     return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
             
-    if Appointment.objects.filter(date=new_date, employee=employee, time=time).exists():
-        return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not employee.accestoken:
+    if not employee.token:
         return Response({'error': 'El empleado no tiene configurada la sincronización con Google Calendar.'}, status=400)
-    print(employee.accestoken)
-    # Paso 2: Crear el objeto Credentials con accestoken
+    
     credentials = Credentials(
         token=employee.accestoken,
-        refresh_token=employee.token,  # Este debería ser el refresh_token guardado en la base de datos
+        refresh_token=employee.token,
         client_id=config('CLIENT_ID'),
         client_secret=config('CLIENTE_SECRET'),
         token_uri='https://oauth2.googleapis.com/token'
     )
 
-    # Verificar si el token ha caducado y renovarlo si es necesario
     if credentials.expired:
-        print("Token expirado")
         try:
-            credentials.refresh(Request())  # Renueva el token
-            print("Token refrescado")
-            # Guarda el nuevo access_token en la base de datos
+            credentials.refresh(Request()) 
             employee.accestoken = credentials.token
             employee.save()
         except Exception as e:
             return Response({'error': f'Error al refrescar el token: {str(e)}'}, status=500)
         
-    # Verificar que el token no esté vacío
     if not credentials.token:
-        print("Token vacío")
         return Response({'error': 'El token de acceso no es válido.'}, status=400)
 
-    print("Token válido")
-    # Paso 3: Crear el evento en Google Calendar
+    if Appointment.objects.filter(date=new_date, employee=employee, time=time).exists():
+        return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
 
-    event_data = {
-        'summary': 'Cita de servicio',
-        'description': 'Detalles de la cita con el cliente.',  # Descripción predeterminada
-        'start': {
-            'dateTime': f"{new_date}T{request.data.get("time")}:00",  # Combina la fecha y hora predeterminada
-            'timeZone': 'America/Bogota',  # Zona horaria
-        },
-        'end': {
-            # Calcula la hora de finalización sumando 30 minutos a la hora de inicio
-            'dateTime': f"{new_date}T{(datetime.strptime(request.data.get("time"), '%H:%M') + timedelta(minutes=30)).strftime('%H:%M')}:00",
-            'timeZone': 'America/Bogota',
-        },
-        'attendees': [
-            {'email': employee.user.email}  # Correo del empleado, asignado como valor fijo por ahora
-        ],
-    }
-
-    headers = {
-        'Authorization': f'Bearer {credentials.token}',
-        'Content-Type': 'application/json'
-    }
-
-
+    #Fechas de inicio y fin de la agenda (solamente para que funcione)
     start_date = "2024-11-20"
     end_date = "2024-11-20"
-    print("Evento creado en Google Calendar.")
-    establishment = Establisment.objects.get(employee=employee)
     schedule = Schedule.objects.create(establisment=establishment, start_date=start_date, end_date=end_date)
-    client = Client.objects.get(id=client_id)
-    appointment = Appointment.objects.create(
-        client=client,
-        employee=employee,
-        date=new_date,
-        time=time,
-        establisment=establishment,
-        estate='Pendiente',
-        method='Efectivo',
-        schedule= schedule
-    )
     
-    print("Creando evento en Google Calendar...")
-    response = requests.post(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-        headers=headers,
-        json=event_data
-    )
-    print(response.json())
+    try:
+        appointment = Appointment.objects.create(
+            client=client,
+            employee=employee,
+            date=new_date,
+            time=time,
+            establisment=establishment,
+            estate='Pendiente',
+            method='Efectivo',
+            schedule= schedule
+        )
+        
+    except Exception as e:
+        return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
+    
+    try:
+        for service in services_list:
+            appointment.services.add(service)
+    except Service.DoesNotExist:
+        return Response({'error': 'Servicio no encontrado.'}, status=404)
+    
+    try:
+        services_details = "\n".join([f"- {service.name}: ${service.price}" for service in services_list])
+        event_description = (
+            f"Detalles de la cita:\n\n"
+            f"Cliente: {client.user.first_name} {client.user.last_name}\n"
+            f"Correo del cliente: {client.user.email}\n\n"
+            f"Profesional: {employee.user.first_name} {employee.user.last_name}\n"
+            f"Correo del profesional: {employee.user.email}\n\n"
+            f"Servicios:\n{services_details}\n\n"
+            f"Precio total: {appointment.total_price}\n\n"
+            f"Establecimiento: {establishment.name}\n"
+            f"Dirección: {establishment.address}\n"
+        )
+        event_data = {
+                'summary': f'Cita en {establishment.name}',
+                'description': event_description,
+                'start': {
+                    'dateTime': f"{new_date}T{request.data.get("time")}:00",
+                    'timeZone': 'America/Bogota',
+                },
+                'end': {
+                    'dateTime': f"{new_date}T{(datetime.strptime(request.data.get("time"), '%H:%M') + timedelta(minutes=30)).strftime('%H:%M')}:00",
+                    'timeZone': 'America/Bogota',
+                },
+                'attendees': [
+                    {'email': employee.user.email},
+                    {'email': client.user.email},
+                ],
+        }
 
-    # Verificar la respuesta
-    if response.status_code != 200:
-        print("Error al crear el evento en Google Calendar.")
-        return Response({
-            'error': 'No se pudo crear el evento en Google Calendar.',
-            'details': response.json()  # Detalles del error si los hay
+        headers = {
+                'Authorization': f'Bearer {credentials.token}',
+                'Content-Type': 'application/json'
+        }
+            
+        response = requests.post(
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                headers=headers,
+                json=event_data
+        )
+
+        if response.status_code != 200:
+            return Response({
+                'error': 'No se pudo crear el evento en Google Calendar.',
+                'details': response.json()
         }, status=500)
+    except Exception as e:
+        return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
-    print("Cita creada en la base de datos.")
-    for service_id in services:
-        service = Service.objects.get(id=service_id)
-        appointment.services.add(service)
-    
     appointment.save()
-
+    
     # Retornar respuesta exitosa
     return Response({
         'message': 'Cita creada y agendada en Google Calendar exitosamente.',
