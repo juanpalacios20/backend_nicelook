@@ -109,8 +109,6 @@ def create_product_payment_option2(request, establisment_id, client_id):
                     product=product_pay,
                     quantity=1.0
                     )
-                #product_pay.quantity -= 1
-                #product_pay.save()
                 discountt = (product_pay.price * product_pay.discount)#/100        
                 payment.discount = discountt
                 payment.save()
@@ -142,6 +140,7 @@ def create_product_payment_option2(request, establisment_id, client_id):
         discountt += (product_pay.price * product_pay.discount)#/100
         payment.discount = discountt
         payment.save()
+        return JsonResponse({'mensaje': 'Compra creada exitosamente'}, status=201)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
@@ -166,7 +165,7 @@ def agregate_product(request, payment_id):
             product_pay.quantity -= 1
             product_pay.save()
             paymentD.save()
-            discountt = (product_pay.price * product_pay.discount)#/100
+            discountt = (product_pay.price * product_pay.discount)/100
             payment.discount += discountt
             payment.save()
             return JsonResponse({'mensaje': 'Producto agregado exitosamentee'}, status=201)
@@ -177,7 +176,7 @@ def agregate_product(request, payment_id):
                 )
         #product_pay.quantity -= 1.0
         #product_pay.save()
-        discountt = (product_pay.price * product_pay.discount)#/100
+        discountt = (product_pay.price * product_pay.discount)/100
         payment.discount += discountt
         payment.save()
         return JsonResponse({'mensaje': 'Producto agregado exitosamente'}, status=201)
@@ -198,15 +197,25 @@ def details (request):
         for d in details:
             image = ImageProduct.objects.filter(id_product=d.product).first()
             if not image:
-                image = 0
-            serializer = ProductPaymentSerializer(payment)
+                image_base64_url = None
+            else:
+                image_binaria = image.image
+                image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+                mime_type = "image/jpeg"
+                image_base64_url = f"data:{mime_type};base64,{image_base64}"
+            print(image_base64_url)
+            discount = (d.product.price * (d.product.discount/100))
             data.append({
                 'name': d.product.name,
-                'image': image,
+                'image': image_base64_url,
                 'description': d.product.description,
                 'price': d.product.price,
                 'quantity': d.quantity,
-                'code': d.product.code
+                'code': d.product.code,
+                'discount': discount,
+                'discount_total': discount * d.quantity,
+                'price_total': d.product.price * d.quantity,
+                'price_final': (d.product.price * d.quantity) - discount
             })
         return JsonResponse(data, safe=False, status=200)
     except Product_payment.DoesNotExist:
@@ -258,7 +267,7 @@ def  delete_product_of_payment(request):
         product_pay.save()
         if paymentD.quantity == 0:
             paymentD.delete()
-        return JsonResponse({'error': 'Producto eliminado'}, status=404)
+        return JsonResponse({'mensaje': 'Producto eliminado'}, status=200)
     except Product_payment.DoesNotExist:
         return JsonResponse({'error': 'Compra no encontrada'}, status=404)
     except Exception as e:
@@ -346,18 +355,23 @@ def filter_products(request, establisment_id):
         data = []
         for product in products:
             image = ImageProduct.objects.filter(id_product=product).first()
-            image_product = image.image
-            image_product_url = f'data:image/png;base64,{base64.b64encode(image_product).decode("utf-8")}'
-            review = ReviewProduct.objects.filter(product=product)
-            contador = 0
-            rating = 0
-            for r in review:
-                contador += 1
-                rating += r.rating
-            rating = rating/contador
             if not image:
-                image_product_url = "Imagen del producto"
+                image_product_url = None
+            else:
+                image_binaria = image.image
+                image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+                mime_type = "image/jpeg"
+                image_product_url = f"data:{mime_type};base64,{image_base64}"
+            review = ReviewProduct.objects.filter(product=product)
+            if not review:
+                rating = 0
+            else:
                 contador = 0
+                rating = 0
+                for r in review:
+                    contador += 1
+                    rating += r.rating
+                rating = rating/contador
             data.append({
                     "id": product.id,
                     "name": product.name,
@@ -399,18 +413,21 @@ def list_products(request, establisment_id):
         data = []
         for product in products:
             image = ImageProduct.objects.filter(id_product=product).first()
-            image_product = image.image
-            image_product_url = f'data:image/png;base64,{base64.b64encode(image_product).decode("utf-8")}'
+            if not image:
+                image_product_url = None
+            else:
+                image_binaria = image.image
+                image_base64 = base64.b64encode(image_binaria).decode('utf-8')
+                mime_type = "image/jpeg"
+                image_product_url = f"data:{mime_type};base64,{image_base64}"
             review = ReviewProduct.objects.filter(product=product)
             contador = 0
             rating = 0
-            for r in review:
-                contador += 1
-                rating += r.rating
-            rating = rating/contador
-            if not image:
-                image_product_url = "Imagen del producto"
-                contador = 0
+            if review:
+                for r in review:
+                    contador += 1
+                    rating += r.rating
+                rating = rating/contador
             if product.quantity > 0:
                 data.append({
                         "id": product.id,
@@ -460,8 +477,8 @@ def delete_product(request, code):
         product.save()
         details.delete()
         
-        return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Producto eliminado'}, status=status.HTTP_200_OK)
     except Product.DoesNotExist:
-        return Response({'message': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'message': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
