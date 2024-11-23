@@ -341,7 +341,7 @@ def create_employee(request, establisment_id):
                 especialty, created = Category.objects.get_or_create(name=especialty)
                 if created:
                     especialty.save()
-                employee.especialty.set(especialty)
+                employee.especialty.add(especialty)
             else:
                 receptionist = Receptionist.objects.create(
                     user=user,
