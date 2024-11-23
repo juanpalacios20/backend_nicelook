@@ -225,7 +225,7 @@ def getInfoEstablisment(request):
             "image_banner": " "
         }
         # Obtén el establecimiento 'Stylos'
-        stylos = Establisment.objects.get(name='Stylos')
+        stylos = Establisment.objects.get(name="Stylo's Peluquería & Barbería")
         stylosSerializer = establismentSerializer(stylos)
 
         services = Service.objects.filter(establisment=stylos)
@@ -271,7 +271,122 @@ def getInfoEstablisment(request):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+@api_view(['GET'])
+def getAvailableEmployees(request, id_employee):
+    try:
+        # Obtener parámetros de la consulta
+        year = int(request.query_params.get('year'))
+        month = int(request.query_params.get('month'))
+        day = int(request.query_params.get('day'))
+        new_date = datetime.datetime(year=year, month=month, day=day)
+
+        # Obtener empleado, horario y citas
+        employee = Employee.objects.get(id=id_employee)
+        time_ranges = Time.objects.filter(employee=employee)
+        appointments = Appointment.objects.filter(date=new_date, employee=employee, estate__icontains='Pendiente').order_by('time')
+
+        disponibilidad = []
+
+        # Calcular disponibilidad para cada rango de tiempo
+        for time_range in time_ranges:
+            start_time = time_range.time_start_day_one
+            end_time = time_range.time_end_day_one
+            if time_range.time_start_day_two and time_range.time_end_day_two:
+                start_time_two = time_range.time_start_day_two
+                end_time_two = time_range.time_end_day_two
+
+            # Verificar disponibilidad en el primer turno (8 a 12)
+            current_start_time = start_time
+            for appointment in appointments:
+                # Verificar las citas dentro del primer turno
+                if appointment.time.time() >= current_start_time and appointment.time.time() < end_time:
+                    # Si hay un espacio antes de la cita
+                    if appointment.time.time() > current_start_time:
+                        disponibilidad.append((current_start_time, appointment.time.time()))
+                    # Actualizar el tiempo de inicio después de la cita
+                    contador = datetime.timedelta(hours=0, minutes=0, seconds=0)
+                    for s in appointment.services.all():
+                        service_duration = EmployeeServices.objects.filter(
+                            employee=employee, service=s).first().duration
+                        contador += service_duration
+                    current_start_time = (datetime.datetime.combine(new_date, appointment.time.time()) + contador).time()
+
+            # Agregar tiempo restante después de la última cita en el primer turno
+            if current_start_time < end_time:
+                disponibilidad.append((current_start_time, end_time))
+
+            # Verificar disponibilidad en el segundo turno (14 a 17)
+            if time_range.double_day:
+                current_start_time_two = start_time_two
+                for appointment in appointments:
+                    # Verificar las citas dentro del segundo turno
+                    if appointment.time.time() >= current_start_time_two and appointment.time.time() < end_time_two:
+                        # Si hay un espacio antes de la cita
+                        if appointment.time.time() > current_start_time_two:
+                            disponibilidad.append((current_start_time_two, appointment.time.time()))
+                        # Actualizar el tiempo de inicio después de la cita
+                        service_duration = EmployeeServices.objects.filter(
+                            employee=employee, service__in=appointment.services.all()).first().duration
+                        current_start_time_two = (datetime.datetime.combine(new_date, appointment.time.time()) + service_duration).time()
+
+                # Agregar tiempo restante después de la última cita en el segundo turno
+                if current_start_time_two < end_time_two:
+                    disponibilidad.append((current_start_time_two, end_time_two))
+
+        # Formatear la respuesta con los intervalos de disponibilidad
+        formatted_disponibilidad = [
+            [str(time[0]), str(time[1])] for time in disponibilidad
+        ]
+        
+        return Response({'disponibilidad': formatted_disponibilidad}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+def calcular_disponibilidad_por_turno(turno_start, turno_end, appointments, new_date, employee):
+    """
+    Calcula los intervalos de disponibilidad dentro de un turno específico.
+    """
+    disponibilidad = []
+    turno_start_time = turno_start
+    turno_end_time = turno_end
+
+    for appointment in appointments:
+        for service in appointment.services.all():
+            service_duration = EmployeeServices.objects.filter(
+                employee=employee, service=service
+            ).first().duration
+
+            # Convertir appointment.time a datetime.time
+            appointment_start = datetime.datetime.combine(new_date, appointment.time.time())
+            appointment_end = appointment_start + service_duration
+
+            # Convertir de nuevo a time para las comparaciones
+            appointment_start = appointment_start.time()
+            appointment_end = appointment_end.time()
+
+            # Si hay un espacio antes de la cita
+            if appointment_start > turno_start_time:
+                disponibilidad.append((turno_start_time, appointment_start))
+
+            # Actualizar el inicio del rango disponible
+            turno_start_time = max(turno_start_time, appointment_end)
+
+    # Agregar tiempo restante después de la última cita
+    if turno_start_time < turno_end_time:
+        disponibilidad.append((turno_start_time, turno_end_time))
+
+    return disponibilidad
+
+
+
+
+
 @api_view(['GET'])
 def getInfoEmployee(request):
     try:
@@ -280,6 +395,7 @@ def getInfoEmployee(request):
         employeeSerializer = EmployeeSerializer(employee)
         employe_data = {}
         data = employeeSerializer.data
+
         employe_data['id'] = data['id']
         employe_data['first_name'] = data['user']['first_name']
         employe_data['last_name'] = data['user']['last_name']
@@ -287,43 +403,63 @@ def getInfoEmployee(request):
         employe_data['phone'] = data['phone']
         employe_data['state'] = data['state']
         employe_data['code'] = data['code']
+
+        # Inicializar `image` para evitar el error
+        image = None
+
+        # Obtener reseñas
         reviews = ReviewEmployee.objects.filter(employee=id)
         if reviews:
             data_review = reviewEmployeeSerializer(reviews, many=True).data
             rating = 0
-            count = 1
+            count = 0
             for review in data_review:
                 nota = review['rating']
-                rating = int(nota)/ count
+                rating += int(nota)
                 count += 1
-            employe_data['rating'] = rating
-            employe_data['reviews'] = count - 1
-            image = EmployeeImage.objects.filter(establishment_id=employee.establisment.id, employee_id=employee.id).first()
-        if image:
+            # Calcular el promedio de calificaciones
+            employe_data['rating'] = rating / count if count > 0 else 0
+            employe_data['reviews'] = count
+
+            # Obtener la imagen del empleado
+            image = EmployeeImage.objects.filter(
+                establishment_id=employee.establisment.id, 
+                employee_id=employee.id
+            ).first()
+
+        # Convertir la imagen a base64 si existe
+        if image is not None:
             imageBase64 = base64.b64encode(image.image).decode('utf-8')
             mime_type = "image/jpeg"
             image_base64_url = f"data:{mime_type};base64,{imageBase64}"
             employe_data['image'] = image_base64_url
-        time = Time.objects.filter(employee=id).first()
+
+        # Obtener el horario del empleado
+        
+        time = Time.objects.filter(employee=employee).first()
         if time:
             employe_data['time'] = timeSerializer(time).data
             del employe_data['time']['employee']
+
+        # Obtener los servicios del empleado
         services = EmployeeServices.objects.filter(employee=id)
         if services:
             employe_data['services'] = employeeServicesSerializer(services, many=True).data
             for service in employe_data['services']:
-                del service['commission']
                 del service['employee']
                 del service['service']['establisment']
-                del service['service']['commission'] 
+                del service['service']['commission']
+
         return Response(employe_data, status=status.HTTP_200_OK)
-    except Exception as e:  
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
+
+
 @api_view(['GET'])
 def getEmployees(request):
     try:
-        establisment = Establisment.objects.get(name="Stylos")
+        establisment = Establisment.objects.get(name="Stylo's Peluquería & Barbería")
         employees = Employee.objects.filter(establisment=establisment)
         data = EmployeeSerializer(employees, many=True).data
         for employee in data:
@@ -336,7 +472,7 @@ def getEmployees(request):
             if services:
                 employee['employee_services'] = employeeServicesSerializer(services, many=True).data
                 for service in employee['employee_services']:
-                    del service['commission']
+                    del service['duration']
                     del service['employee']
                     del service['service']['establisment']
                     del service['service']['commission']

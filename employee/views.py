@@ -11,7 +11,6 @@ from employee_services.models import EmployeeServices
 from employee_services.serializers import employeeServicesSerializer
 from review_employee.models import ReviewEmployee
 from review_employee.serializers import reviewEmployeeSerializer
-from schedule.models import Schedule
 from employee.models import Employee
 from establisment.models import Establisment
 from employee.serializers import EmployeeSerializer
@@ -31,7 +30,7 @@ from category.models import Category
 from service.models import Service
 from schedule.models import Time
 from django.views.decorators.csrf import csrf_exempt
-
+from datetime import timedelta
 from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -52,13 +51,25 @@ def employeeAddService(request, employee_id):
         # Obtener el ID del servicio y el ID del establecimiento desde la solicitud
         service_id = request.data.get('service_id')
         establisment_id = request.data.get('establisment_id')
+        hours = request.data.get('hours')
+        minutes = request.data.get('minutes')
+        
+        if hours is None or minutes is None:
+            return Response({"error": "Hours and minutes are required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Obtener el servicio que se desea agregar
         service = Service.objects.get(id=service_id)
+        establisment = Establisment.objects.get(id=establisment_id)
         
         # Verificar que el servicio pertenece al establecimiento especificado
-        if service.establisment.id != establisment_id:
+        print(service.establisment.id, establisment_id)
+        
+        if service.establisment.id == establisment.id:
+            print("si")
+        
+        if service.establisment.id != establisment.id:
             return Response({"error": "The service does not belong to the establishment indicated."}, status=status.HTTP_400_BAD_REQUEST)
+        
 
         # Verificar que el estado del servicio sea True
         if not service.state:
@@ -68,11 +79,16 @@ def employeeAddService(request, employee_id):
         if EmployeeServices.objects.filter(employee=employee, service=service).exists():
             return Response({"message": "The service is already assigned to this employee."}, status=status.HTTP_400_BAD_REQUEST)
         
+        if hours == 00:
+            duration = timedelta(minutes=minutes)
+        else:
+            duration = timedelta(hours=hours, minutes=minutes)
+        
         # Crear la relación con la comisión del servicio
         employee_service = EmployeeServices.objects.create(
             employee=employee,
             service=service,
-            commission=service.commission
+            duration=duration
         )
 
         # Serializar y devolver la respuesta
@@ -597,60 +613,94 @@ def schedule_employee(request, employee_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
-class EmployeeLogin(SocialLoginView):
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+from .models import Employee
+from rest_framework_simplejwt.tokens import RefreshToken
+from decouple import config
+
+class EmployeeLogin(APIView):
     def post(self, request, *args, **kwargs):
-        token = request.data.get('token')
+        auth_code = request.data.get('auth_code')
 
-        # Validar el ID Token usando Google API
-        token_info_url = f'https://oauth2.googleapis.com/tokeninfo?id_token={token}'
-        token_info_response = requests.get(token_info_url)
+        if not auth_code:
+            return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if token_info_response.status_code != 200:
-            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+        # URL para obtener los tokens de Google
+        token_url = 'https://oauth2.googleapis.com/token'
 
-        # Si el token es válido, obtener los datos del usuario
-        token_info = token_info_response.json()
-        email = token_info.get('email')
-        first_name = token_info.get('given_name')
-        last_name = token_info.get('family_name')
-        google_id = token_info.get('sub')
+        # Datos necesarios para hacer la solicitud POST a Google para obtener los tokens
+        data = {
+            'code': auth_code,  # El authorization code que recibiste del frontend
+            'client_id': config("CLIENT_ID"),  # Tu client_id de Google
+            'client_secret': config("CLIENTE_SECRET"),  # Tu client_secret de Google
+            'redirect_uri': "http://localhost:5173",  # Tu URI de redirección (debe coincidir con la configuración en Google)
+            'grant_type': 'authorization_code',  # Tipo de flujo
+        }
+
+        # Realizar la solicitud POST para obtener los tokens
+        response = requests.post(token_url, data=data)
+        print(response)
+        
+        if response.status_code != 200:
+            return Response({'error': 'Failed to exchange authorization code for tokens', 'details': response.json()}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Si la solicitud es exitosa, obtener los tokens
+        tokens = response.json()
+        access_token = tokens.get('access_token')
+        refresh_token = tokens.get('refresh_token')
+
+        if not access_token:
+            return Response({'error': 'Access token not found in the response'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Usar el access_token para obtener la información del usuario desde Google
+        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        user_info_response = requests.get(user_info_url, headers={'Authorization': f'Bearer {access_token}'})
+        
+        if user_info_response.status_code != 200:
+            return Response({'error': 'Failed to retrieve user information from Google'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Datos del usuario
+        user_data = user_info_response.json()
+        email = user_data.get('email')
+        google_id = user_data.get('id')
+        first_name = user_data.get('given_name')
+        last_name = user_data.get('family_name')
 
         # Verificar si el correo electrónico está verificado
-        if not token_info.get('email_verified'):
+        if not user_data.get('verified_email', False):
             return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Si no existe el usuario, crear uno nuevo
-            user = User.objects.create_user(email=email, first_name=first_name, last_name=last_name)
-            # Crear un objeto Employee asociado al usuario
-            Employee.objects.create(user=user)
+        # Verificar si el usuario ya existe en la base de datos
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        employee = Employee.objects.filter(user=user).first()
+        if not employee:
+            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Obtener el objeto Employee asociado al usuario
-        try:
-            employee = Employee.objects.get(user=user)
-        except Employee.DoesNotExist:
-            # Si no existe el objeto Employee, crear uno nuevo
-            code = uuid.uuid4().hex[:6].upper()
-            employee = Employee.objects.create(user=user, state=True, googleid=google_id, token=token, accestoken=token_info.get('at_hash'), establisment=Establisment.objects.first(),code=code)
+        # Guardar los tokens en el modelo Employee
+        employee.token = refresh_token
+        employee.accestoken = access_token
+        employee.googleid = google_id
+        employee.save()
 
-        # Generar tokens de acceso (JWT)
+        # Generar el token JWT para el usuario
         refresh = RefreshToken.for_user(user)
-
-        # Agregar información adicional al token
         refresh['email'] = user.email
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
-        refresh['establishment'] = employee.establisment.id
-        refresh['state'] = employee.state
-        refresh['code'] = employee.code
 
-        # Responder con el token de acceso y la información adicional
+        # Responder con el JWT y los datos del usuario
         return Response({
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
-            'email': refresh.access_token.get('email'),
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
             'id_employee': employee.id,
         }, status=status.HTTP_200_OK)
