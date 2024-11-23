@@ -344,10 +344,8 @@ def create_employee(request, establisment_id):
                 employee.especialty.add(especialty)
             else:
                 receptionist = Receptionist.objects.create(
-                    user=user,
-                    code=next_code_str,  # Asignar el código secuencial
+                    user=user,  # Asignar el código secuencial
                     phone=phone,
-                    state=state,
                     googleid=googleid,
                     token= token,
                     accestoken=accestoken,
