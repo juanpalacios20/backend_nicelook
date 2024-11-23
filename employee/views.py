@@ -690,29 +690,58 @@ class EmployeeLogin(APIView):
         user = User.objects.filter(email=email).first()
         if not user:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
         employee = Employee.objects.filter(user=user).first()
+        if employee:
+            employee.token = refresh_token
+            employee.accestoken = access_token
+            employee.googleid = google_id
+            employee.save()
+
+            # Generar el token JWT para el usuario
+            refresh = RefreshToken.for_user(user)
+            refresh['email'] = user.email
+            refresh['first_name'] = user.first_name
+            refresh['last_name'] = user.last_name
+            refresh['google_id'] = google_id
+
+            # Responder con el JWT y los datos del usuario
+            return Response({
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'id_employee': employee.id,
+                'isArtist': True
+            }, status=status.HTTP_200_OK)
         if not employee:
             return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        receptionist = Receptionist.objects.filter(user=user).first()
+        if receptionist:
+            receptionist.token = refresh_token
+            receptionist.accestoken = access_token
+            receptionist.googleid = google_id
+            receptionist.save()
 
-        # Guardar los tokens en el modelo Employee
-        employee.token = refresh_token
-        employee.accestoken = access_token
-        employee.googleid = google_id
-        employee.save()
+            # Generar el token JWT para el usuario
+            refresh = RefreshToken.for_user(user)
+            refresh['email'] = user.email
+            refresh['first_name'] = user.first_name
+            refresh['last_name'] = user.last_name
+            refresh['google_id'] = google_id
 
-        # Generar el token JWT para el usuario
-        refresh = RefreshToken.for_user(user)
-        refresh['email'] = user.email
-        refresh['first_name'] = user.first_name
-        refresh['last_name'] = user.last_name
-        refresh['google_id'] = google_id
-
-        # Responder con el JWT y los datos del usuario
-        return Response({
-            'access_token': str(refresh.access_token),
-            'refresh_token': str(refresh),
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'id_employee': employee.id,
-        }, status=status.HTTP_200_OK)
+            # Responder con el JWT y los datos del usuario
+            return Response({
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'id_receptionist': receptionist.id,
+                'isArtist': False
+            }, status=status.HTTP_200_OK)
+        if not receptionist:
+            return Response({'error': 'Receptionist not found'}, status=status.HTTP_404_NOT_FOUND)
+        
