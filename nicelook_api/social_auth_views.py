@@ -8,6 +8,9 @@ from administrator.models import Administrator
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from establisment.models import Establisment
+from receptionist.models import Receptionist
+from employee.models import Employee
+from client.models import Client
 
 User = get_user_model()
 
@@ -48,6 +51,9 @@ class GoogleLogin(SocialLoginView):
             # Crear un administrador si el usuario es nuevo
             establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name, contact_methods=contact_methods)
             Administrator.objects.create(user=user, establisment=establishment, googleid=google_id, token=token)
+        
+        if Client.objects.filter(user=user).exists() or Receptionist.objects.filter(user=user).exists() or Employee.objects.filter(user=user).exists():
+            return Response({'error': 'El usuario ya se encuentra registrado y no es un administrador'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
