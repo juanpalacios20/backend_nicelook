@@ -715,8 +715,6 @@ class EmployeeLogin(APIView):
                 'id_employee': employee.id,
                 'isArtist': True
             }, status=status.HTTP_200_OK)
-        if not employee:
-            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
         
         receptionist = Receptionist.objects.filter(user=user).first()
         if receptionist:
@@ -742,6 +740,6 @@ class EmployeeLogin(APIView):
                 'id_receptionist': receptionist.id,
                 'isArtist': False
             }, status=status.HTTP_200_OK)
-        if not receptionist:
-            return Response({'error': 'Receptionist not found'}, status=status.HTTP_404_NOT_FOUND)
+        if not receptionist and not employee:
+            return Response({'error': 'Receptionist and Employee not found'}, status=status.HTTP_404_NOT_FOUND)
         
