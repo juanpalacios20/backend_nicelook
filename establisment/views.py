@@ -437,7 +437,6 @@ def getInfoEmployee(request):
         # Obtener el horario del empleado
         
         time = Time.objects.filter(employee=employee).first()
-        print(time)
         if time:
             employe_data['time'] = timeSerializer(time).data
             del employe_data['time']['employee']

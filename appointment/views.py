@@ -271,7 +271,7 @@ def create_appointment(request):
     appointments = Appointment.objects.filter(employee=employee, date=new_date)
     
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time).exists():
-        return Response({"error": "Ya existe una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
     
     day_date = " "
     if new_date.weekday() == 0:
@@ -301,14 +301,14 @@ def create_appointment(request):
                 end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
             
             if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
-                return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "No es posible agendar una cita en un dia que no trabaja el artista"}, status=status.HTTP_400_BAD_REQUEST)
             
             if time_entry.double_day:
                 if time.time() < start_hour_t1 or time.time() >= end_hour_t2 or time.time() < start_hour_t2 and time.time() >= end_hour_t1:
-                        return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"error": "La cita no puede empezar antes o despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
                     
                 if (final_time.time() > end_hour_t1 and final_time.time() <= start_hour_t2) or final_time.time() > end_hour_t2:
-                    return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"error": "La cita no puede empezar antes o despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
     
     for appointment in appointments:
         appointment_start_time = appointment.time
@@ -320,12 +320,12 @@ def create_appointment(request):
         appointment_end_time = (appointment.time + duration_total)
         print(appointment_start_time.time(), appointment_end_time.time())
         if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
-            return Response({'error': 'El empleado ya tiene una cita programada en ese horario.'}, status=400)
+            return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=400)
         if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
-            return Response({'error': 'El empleado ya tiene una cita programada en ese horario.'}, status=400)
+            return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=400)
         
     if not employee.token:
-        return Response({'error': 'El empleado no tiene configurada la sincronización con Google Calendar.'}, status=400)
+        return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=400)
     
     credentials = Credentials(
         token=employee.accestoken,
