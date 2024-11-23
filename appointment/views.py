@@ -48,7 +48,10 @@ import requests
 from rest_framework.decorators import api_view
 from .models import Employee, Appointment, Service
 from decouple import config
+from django.conf import settings
 from employee_services.models import EmployeeServices
+from django.core.mail import send_mail
+from googleapiclient.discovery import build
 
 @api_view(['POST'])
 def appointment_list(request):
@@ -72,84 +75,151 @@ def appointment_list(request):
 @api_view(['PATCH'])
 def reschedule(request):
     try:
+        # Obtener datos de la solicitud
         id_appointment = request.data.get('id_appointment')
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
-        time = request.data.get('time')
-        time = datetime(year=int(year), month=int(month), day=int(day), hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
-        print(day, month, year, time)
+        time_str = request.data.get('time')
 
-        if not id_appointment or not day or not month or not year:
+        if not id_appointment or not day or not month or not year or not time_str:
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Convertir tiempo
+        time = datetime(year=int(year), month=int(month), day=int(day),
+                        hour=int(time_str.split(':')[0]), minute=int(time_str.split(':')[1]))
+
         # Obtener la cita existente
         appointment = Appointment.objects.get(id=id_appointment)
 
+        # Validar disponibilidad y estado de la cita
         new_date = date(year=int(year), month=int(month), day=int(day))
-        print(new_date)
-        day_date = " "
-        if new_date.weekday() == 0:
-            day_date = "Lun"
-        elif new_date.weekday() == 1:
-            day_date = "Mar"
-        elif new_date.weekday() == 2:
-            day_date = "Mie"    
-        elif new_date.weekday() == 3:
-            day_date = "Jue"
-        elif new_date.weekday() == 4:
-            day_date = "Vie"
-        elif new_date.weekday() == 5:
-            day_date = "Sab"
-        elif new_date.weekday() == 6:    
-            day_date = "Dom"
-
-        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, employee=appointment.employee, time = time).exists():
+        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, 
+                                       employee=appointment.employee, time=time).exists():
             return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        time_employee = Time.objects.filter(employee=appointment.employee)
-        if time_employee:
-            for t in time_employee:
-                if day_date.lower() not in [d.lower() for d in t.working_days]:
-                    return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if appointment.estate == "Completada" or appointment.estate == "Cancelada":
+
+        if appointment.estate in ["Completada", "Cancelada"]:
             return Response({"error": "appointment canceled or completed"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Actualizar fecha y hora en la base de datos
         appointment.date = new_date
-        # Si se proporciona un nuevo tiempo, actualizarlo
-        if time:
-            appointment.time = time
-        if time:
-            for time_entry in time_employee:
-                start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
-
-                end_hour_t1 = time_entry.time_end_day_one = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
-
-                if time_entry.time_start_day_two:
-                    start_hour_t2 = time_entry.time_start_day_two = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
-                    end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
-
-                if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
-                    return Response({"error": "Off-agenda employee note."}, status=status.HTTP_400_BAD_REQUEST)
-
-                if time_entry.double_day:
-                    if time.time() < start_hour_t1 or time.time() > end_hour_t2 or time.time() < start_hour_t2 and time.time() > end_hour_t1:
-                        return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
-        # Guardar los cambios
+        appointment.time = time
         appointment.save()
 
-        return Response({"success": "Appointment rescheduled"},status=status.HTTP_200_OK)
-    
+        # Reagendar en Google Calendar
+        update_google_calendar(appointment.employee.accestoken, appointment.employee.googleid, appointment, time)
+        update_google_calendar(appointment.client.accestoken, appointment.client.googleid, appointment, time)
+
+        # Enviar correos de notificación
+        send_email_notification(appointment)
+
+        return Response({"success": "Appointment rescheduled"}, status=status.HTTP_200_OK)
+
     except Appointment.DoesNotExist:
         return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
-    
-    except ValueError:
-        return Response({"error": "Invalid date or time format"}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+def update_google_calendar(access_token, calendar_id, appointment, time):
+    """
+    Actualiza un evento en Google Calendar.
+    """
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+    import logging
+
+    # Configurar logging para registrar errores y eventos
+    logger = logging.getLogger(__name__)
+    credentials = Credentials(
+        token=appointment.employee.accestoken,
+        refresh_token=appointment.employee.token,
+        client_id=config('CLIENT_ID'),
+        client_secret=config('CLIENTE_SECRET'),
+        token_uri='https://oauth2.googleapis.com/token'
+    )
+
+    if credentials.expired:
+        try:
+            refresh_access_token(appointment.employee.token, appointment.employee_id)
+        except Exception as e:
+            return Response({'error': f'Error al refrescar el token de acceso: {str(e)}'}, status=500)
+        
+    if not credentials.token:
+        return Response({'error': 'El token de acceso no es válido.'}, status=400)
+
+    #Fechas de inicio y fin de la agenda (solamente para que funcione)
+
+    try:
+        # Configurar el servicio de Google Calendar
+        service = build('calendar', 'v3', credentials=credentials)
+        
+    except Exception as e:
+        logger.error(f"Error al inicializar el servicio de Google Calendar: {str(e)}")
+        raise Exception(f"Error al inicializar el servicio de Google Calendar: {str(e)}")
+
+    # Datos para actualizar el evento
+    event_id = appointment.event_id
+    print(event_id)  # Asegúrate de almacenar el ID del evento en tu modelo
+    if not event_id:
+        logger.error("El appointment no tiene un 'event_id' asignado.")
+        raise Exception("El appointment no tiene un 'event_id' asignado.")
+    
+    start_time = time.isoformat()
+    end_time = (time + timedelta(hours=1)).isoformat()  # Ajusta la duración según sea necesario
+
+    # Obtener nombres de los servicios
+    try:
+        services = appointment.services.all()  # Asumiendo una relación ManyToMany
+        service_names = ", ".join([service.name for service in services])
+    except Exception as e:
+        logger.error(f"Error al obtener servicios asociados al appointment: {str(e)}")
+        raise Exception(f"Error al obtener servicios asociados al appointment: {str(e)}")
+
+    # Construir el cuerpo del evento
+    event_body = {
+        'start': {'dateTime': start_time, 'timeZone': 'America/Bogota'},
+        'end': {'dateTime': end_time, 'timeZone': 'America/Bogota'},
+        'summary': f'Cita: {service_names}',
+        'description': f'Cita reagendada. Servicios: {service_names}',
+        'attendees': [
+            {'email': appointment.client.user.email},
+            {'email': appointment.employee.user.email},
+        ],
+    }
+
+    # Intentar actualizar el evento
+    try:
+        response = service.events().update(calendarId='primary', eventId=event_id, body=event_body).execute()
+        logger.info(f"Evento actualizado en Google Calendar con ID: {event_id}")
+        return response
+    except HttpError as http_err:
+        logger.error(f"HTTPError al actualizar el evento en Google Calendar: {http_err}")
+        raise Exception(f"Error HTTP al actualizar el evento: {http_err}")
+    except Exception as e:
+        logger.error(f"Error inesperado al actualizar el evento: {str(e)}")
+        raise Exception(f"Error inesperado al actualizar el evento: {str(e)}")
+
+def send_email_notification(appointment):
+    """
+    Envía un correo electrónico al cliente y al empleado notificando la nueva fecha.
+    """
+    # Obtener nombres de los servicios
+    services = appointment.services.all()
+    service_names = ", ".join([service.name for service in services])
+
+    subject = "Cita Reprogramada"
+    message = (
+        f"Hola,\n\nTu cita ha sido reprogramada.\n\n"
+        f"Servicios: {service_names}\n"
+        f"Fecha: {appointment.date.strftime('%Y-%m-%d')}\n"
+        f"Hora: {appointment.time.strftime('%H:%M')}\n\n"
+        "Gracias por usar nuestro servicio."
+    )
+    recipients = [appointment.client.user.email, appointment.employee.user.email]
+    
+
+    send_mail(subject, message, settings.EMAIL_HOST_USER , recipients)
 @api_view(['PATCH'])
 def change_state(request):
     try: 
@@ -451,6 +521,47 @@ def create_appointment(request):
                 'error': 'No se pudo crear el evento en Google Calendar.',
                 'details': response.json()
         }, status=500)
+        else:
+            event_id = response.json().get('id')
+            appointment.event_id = event_id
+            appointment.save()
+            subject = "Cita en " + establishment.name
+            message = (
+                "Hola,\n\n"
+                "Tienes una cita agendada en " + establishment.name + ".\n\n"
+                "Detalles de la cita:\n"
+                "Profesional: " + employee.user.first_name + " " + employee.user.last_name + "\n"
+                "Correo del profesional: " + employee.user.email + "\n"
+                "Servicios:\n" + services_details + "\n"
+                "Precio total: " + str(appointment.total_price) + "\n"
+                "Establecimiento: " + establishment.name + "\n"
+                "Dirección: " + establishment.address + "\n"
+                "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
+                "Hora: " + request.data.get("time") + "\n\n"
+                "Si tienes alguna pregunta, no dudes en contactarnos.\n"
+                "Atentamente,\n"
+                "Equipo de Nicelook"
+
+            )
+
+            send_mail(subject, message, settings.EMAIL_HOST_USER , [client.user.email], fail_silently=False)
+            subject_employee = "Cita agendada en " + establishment.name
+            message_employee = (
+                f"Hola, {employee.user.first_name}, \n\n"
+                "Tienes una nueva cita en tu agenda en  " + establishment.name + ".\n\n"
+                "Detalles de la cita:\n"
+                "Cliente: " + client.user.first_name + " " + client.user.last_name + "\n"
+                "Correo del cliente: " + client.user.email + "\n"
+                "Servicios:\n" + services_details + "\n"
+                "Precio total: " + str(appointment.total_price) + "\n"
+                "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
+                "Hora: " + request.data.get("time") + "\n\n"
+                "Si tienes alguna pregunta, no dudes en contactarnos.\n"
+                "Atentamente,\n"
+                "Equipo de Nicelook"
+            )
+
+            send_mail(subject_employee, message_employee, settings.EMAIL_HOST_USER , [employee.user.email], fail_silently=False)
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
