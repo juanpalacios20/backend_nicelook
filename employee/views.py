@@ -11,7 +11,6 @@ from employee_services.models import EmployeeServices
 from employee_services.serializers import employeeServicesSerializer
 from review_employee.models import ReviewEmployee
 from review_employee.serializers import reviewEmployeeSerializer
-from schedule.models import Schedule
 from employee.models import Employee
 from establisment.models import Establisment
 from employee.serializers import EmployeeSerializer

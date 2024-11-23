@@ -447,7 +447,6 @@ def getInfoEmployee(request):
         if services:
             employe_data['services'] = employeeServicesSerializer(services, many=True).data
             for service in employe_data['services']:
-                del service['commission']
                 del service['employee']
                 del service['service']['establisment']
                 del service['service']['commission']
@@ -457,7 +456,7 @@ def getInfoEmployee(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
 
-    
+
 @api_view(['GET'])
 def getEmployees(request):
     try:
@@ -474,7 +473,7 @@ def getEmployees(request):
             if services:
                 employee['employee_services'] = employeeServicesSerializer(services, many=True).data
                 for service in employee['employee_services']:
-                    del service['commission']
+                    del service['duration']
                     del service['employee']
                     del service['service']['establisment']
                     del service['service']['commission']

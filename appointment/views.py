@@ -40,8 +40,15 @@ from datetime import datetime, timedelta
 # import requests
 # from google.auth.transport.requests import Request
 # from google.oauth2.credentials import Credentials
-from datetime import datetime, timedelta
 from rest_framework.response import Response
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+import requests
+from rest_framework.decorators import api_view
+from .models import Employee, Appointment, Service
+from decouple import config
+from employee_services.models import EmployeeServices
 
 @api_view(['POST'])
 def appointment_list(request):
@@ -185,6 +192,7 @@ def get_available_times(employee_id, date):
         if not any(slot == occupied_time for occupied_time in occupied_times):
             free_slots.append(slot)
 
+    print(f"Free slots: {free_slots}")
     return free_slots
 
 
@@ -205,15 +213,6 @@ def check_availability(request, employee_id):
     available_times_str = [time.isoformat() for time in available_times]
     
     return Response({'available_times': available_times_str})
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-import requests
-from datetime import datetime, timedelta
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from .models import Employee, Appointment, Service  # Asegúrate de tener estos modelos
-from decouple import config
 
 @api_view(['POST'])
 @csrf_exempt
@@ -251,12 +250,28 @@ def create_appointment(request):
         return Response({'error': 'Formato de fecha o hora inválido. Use YYYY-MM-DD y HH:MM.'}, status=400)
     
     services_list = []
+    duration = []
     for service_id in services:
         try:
-            service = Service.objects.get(id=service_id)
-            services_list.append(service)
+            service = EmployeeServices.objects.get(employee=employee, service=service_id)
+            services_list.append(service.service)
+            duration.append(service.duration)
         except Service.DoesNotExist:
             return Response({'error': 'Servicio no encontrado.'}, status=404)
+    
+    start_time = datetime.strptime(request.data.get('time'), '%H:%M')
+    
+    duration_total = sum(duration, timedelta())
+    
+    final_time = start_time + duration_total
+    
+    print(start_time.time())
+    print(final_time.time())
+    
+    appointments = Appointment.objects.filter(employee=employee, date=new_date)
+    
+    if Appointment.objects.filter(date=new_date, employee=employee_id, time=time).exists():
+        return Response({"error": "Ya existe una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
     
     day_date = " "
     if new_date.weekday() == 0:
@@ -290,9 +305,25 @@ def create_appointment(request):
             
             if time_entry.double_day:
                 if time.time() < start_hour_t1 or time.time() >= end_hour_t2 or time.time() < start_hour_t2 and time.time() >= end_hour_t1:
+                        return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                if (final_time.time() > end_hour_t1 and final_time.time() <= start_hour_t2) or final_time.time() > end_hour_t2:
                     return Response({"error": "Time out of range."}, status=status.HTTP_400_BAD_REQUEST)
-            
-
+    
+    for appointment in appointments:
+        appointment_start_time = appointment.time
+        for service in appointment.services.all():
+            services = EmployeeServices.objects.filter(employee=employee_id, service=service)
+        duration_total = timedelta()
+        for service in services:
+            duration_total = service.duration
+        appointment_end_time = (appointment.time + duration_total)
+        print(appointment_start_time.time(), appointment_end_time.time())
+        if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
+            return Response({'error': 'El empleado ya tiene una cita programada en ese horario.'}, status=400)
+        if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
+            return Response({'error': 'El empleado ya tiene una cita programada en ese horario.'}, status=400)
+        
     if not employee.token:
         return Response({'error': 'El empleado no tiene configurada la sincronización con Google Calendar.'}, status=400)
     
@@ -315,13 +346,9 @@ def create_appointment(request):
     if not credentials.token:
         return Response({'error': 'El token de acceso no es válido.'}, status=400)
 
-    if Appointment.objects.filter(date=new_date, employee=employee, time=time).exists():
-        return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
-
     #Fechas de inicio y fin de la agenda (solamente para que funcione)
     start_date = "2024-11-20"
     end_date = "2024-11-20"
-    schedule = Schedule.objects.create(establisment=establishment, start_date=start_date, end_date=end_date)
     
     try:
         appointment = Appointment.objects.create(
@@ -332,7 +359,6 @@ def create_appointment(request):
             establisment=establishment,
             estate='Pendiente',
             method='Efectivo',
-            schedule= schedule
         )
         
     except Exception as e:
