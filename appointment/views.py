@@ -231,6 +231,26 @@ def check_availability(request, employee_id):
     
     return Response({'available_times': available_times_str})
 
+def refresh_access_token(refresh_token, employeeId):
+    employee = Employee.objects.get(id=employeeId)
+    url = 'https://oauth2.googleapis.com/token'
+    data = {
+        'client_id': config('CLIENT_ID'),
+        'client_secret': config('CLIENT_SECRET'),
+        'refresh_token': refresh_token,
+        'grant_type': 'refresh_token'
+    }
+    
+    response = requests.post(url, data=data)
+    response_data = response.json()
+    
+    if 'access_token' not in response_data:
+        return "Error al refrescar el token."
+    else:
+        employee.accesstoken = response_data['access_token']
+        employee.save()
+        return response_data['access_token']
+
 @api_view(['POST'])
 @csrf_exempt
 def create_appointment(request):
@@ -354,11 +374,9 @@ def create_appointment(request):
 
     if credentials.expired:
         try:
-            credentials.refresh(Request()) 
-            employee.accestoken = credentials.token
-            employee.save()
+            refresh_access_token(employee.token, employee_id)
         except Exception as e:
-            return Response({'error': f'Error al refrescar el token: {str(e)}'}, status=500)
+            return Response({'error': f'Error al refrescar el token de acceso: {str(e)}'}, status=500)
         
     if not credentials.token:
         return Response({'error': 'El token de acceso no es válido.'}, status=400)

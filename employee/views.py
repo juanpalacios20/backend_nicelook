@@ -35,6 +35,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authtoken.models import Token
+from receptionist.models import Receptionist
 
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
@@ -265,7 +266,7 @@ def create_employee(request, establisment_id):
 
     # Datos del Empleado
     phone = request.data.get('phone')
-    especialty = request.data.get('especialty', [])  # Lista de especialidades (IDs)
+    especialty = request.data.get('especialty')
     googleid = request.data.get('googleid', None)  # Opcional
     accestoken = request.data.get('accestoken', None)  # Opcional
     token = request.data.get('token', None)  # Opcional
@@ -326,21 +327,32 @@ def create_employee(request, establisment_id):
 
             # Creación de empleado
             state = True  # Estado inicial del empleado
-            employee = Employee.objects.create(
-                user=user,
-                code=next_code_str,  # Asignar el código secuencial
-                phone=phone,
-                state=state,
-                googleid=googleid,
-                token= token,
-                accestoken=accestoken,
-                establisment=establisment
-            )
-
-            # Asignar especialidades
-            especialties = Category.objects.filter(id__in=especialty)
-            employee.especialty.set(especialties)
-
+            if especialty != "Recepcionista":
+                employee = Employee.objects.create(
+                    user=user,
+                    code=next_code_str,  # Asignar el código secuencial
+                    phone=phone,
+                    state=state,
+                    googleid=googleid,
+                    token= token,
+                    accestoken=accestoken,
+                    establisment=establisment
+                )
+                especialty, created = Category.objects.get_or_create(name=especialty)
+                if created:
+                    especialty.save()
+                employee.especialty.add(especialty)
+            else:
+                receptionist = Receptionist.objects.create(
+                    user=user,  # Asignar el código secuencial
+                    phone=phone,
+                    googleid=googleid,
+                    token= token,
+                    accestoken=accestoken,
+                    establisment=establisment
+                )
+                receptionist.save()
+                
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
