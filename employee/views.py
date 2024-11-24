@@ -712,6 +712,7 @@ class EmployeeLogin(APIView):
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
+                'establishment_id': employee.establisment.id,
                 'id_employee': employee.id,
                 'isArtist': True
             }, status=status.HTTP_200_OK)
@@ -737,6 +738,7 @@ class EmployeeLogin(APIView):
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
+                'establishment_id': receptionist.establisment.id,
                 'id_receptionist': receptionist.id,
                 'isArtist': False
             }, status=status.HTTP_200_OK)
