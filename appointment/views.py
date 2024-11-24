@@ -106,6 +106,8 @@ def reschedule(request):
         appointment.time = time
         appointment.save()
 
+        refresh_access_token(appointment.employee.token, appointment.employee.id)
+
         # Reagendar en Google Calendar
         update_google_calendar(appointment.employee.accestoken, appointment.employee.googleid, appointment, time)
         update_google_calendar(appointment.client.accestoken, appointment.client.googleid, appointment, time)
@@ -302,24 +304,35 @@ def check_availability(request, employee_id):
     return Response({'available_times': available_times_str})
 
 def refresh_access_token(refresh_token, employeeId):
-    employee = Employee.objects.get(id=employeeId)
+    try:
+        employee = Employee.objects.get(id=employeeId)
+    except Employee.DoesNotExist:
+        return "Empleado no encontrado."
+
     url = 'https://oauth2.googleapis.com/token'
     data = {
         'client_id': config('CLIENT_ID'),
-        'client_secret': config('CLIENT_SECRET'),
+        'client_secret': config('CLIENTE_SECRET'),
         'refresh_token': refresh_token,
         'grant_type': 'refresh_token'
     }
-    
-    response = requests.post(url, data=data)
+
+    try:
+        response = requests.post(url, data=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        return f"Error al comunicarse con Google: {str(e)}"
+
     response_data = response.json()
-    
+
     if 'access_token' not in response_data:
-        return "Error al refrescar el token."
-    else:
-        employee.accesstoken = response_data['access_token']
-        employee.save()
-        return response_data['access_token']
+        error_message = response_data.get("error_description", "No se recibió access_token.")
+        return f"Error al refrescar el token: {error_message}"
+    
+    employee.accestoken = response_data['access_token']
+    employee.save()
+    
+    return response_data['access_token']
 
 @api_view(['POST'])
 @csrf_exempt
@@ -427,12 +440,16 @@ def create_appointment(request):
         appointment_end_time = (appointment.time + duration_total)
         print(appointment_start_time.time(), appointment_end_time.time())
         if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
-            return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=400)
+            return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
         if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
-            return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=400)
+            return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
         
     if not employee.token:
-        return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=400)
+        return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    print(employee.accestoken)
+    refresh_access_token(employee.token, employee_id)
+    print(employee.accestoken)
     
     credentials = Credentials(
         token=employee.accestoken,
@@ -441,12 +458,6 @@ def create_appointment(request):
         client_secret=config('CLIENTE_SECRET'),
         token_uri='https://oauth2.googleapis.com/token'
     )
-
-    if credentials.expired:
-        try:
-            refresh_access_token(employee.token, employee_id)
-        except Exception as e:
-            return Response({'error': f'Error al refrescar el token de acceso: {str(e)}'}, status=500)
         
     if not credentials.token:
         return Response({'error': 'El token de acceso no es válido.'}, status=400)
@@ -471,7 +482,7 @@ def create_appointment(request):
     
     try:
         for service in services_list:
-            appointment.services.add(service)
+            appointment.services.add(service) 
     except Service.DoesNotExist:
         return Response({'error': 'Servicio no encontrado.'}, status=404)
     
@@ -496,7 +507,7 @@ def create_appointment(request):
                     'timeZone': 'America/Bogota',
                 },
                 'end': {
-                    'dateTime': f"{new_date}T{(datetime.strptime(request.data.get("time"), '%H:%M') + timedelta(minutes=30)).strftime('%H:%M')}:00",
+                    'dateTime': f"{new_date}T{(final_time).strftime('%H:%M')}:00",
                     'timeZone': 'America/Bogota',
                 },
                 'attendees': [
@@ -517,6 +528,7 @@ def create_appointment(request):
         )
 
         if response.status_code != 200:
+            Appointment.objects.get(id=appointment.id).delete()
             return Response({
                 'error': 'No se pudo crear el evento en Google Calendar.',
                 'details': response.json()
@@ -529,19 +541,18 @@ def create_appointment(request):
             message = (
                 "Hola,\n\n"
                 "Tienes una cita agendada en " + establishment.name + ".\n\n"
-                "Detalles de la cita:\n"
+                "Detalles de la cita:\n\n"
                 "Profesional: " + employee.user.first_name + " " + employee.user.last_name + "\n"
-                "Correo del profesional: " + employee.user.email + "\n"
-                "Servicios:\n" + services_details + "\n"
-                "Precio total: " + str(appointment.total_price) + "\n"
+                "Correo del profesional: " + employee.user.email + "\n\n"
+                "Servicios:\n" + services_details + "\n\n"
+                f"Precio total: ${str(appointment.total_price)}\n\n"
                 "Establecimiento: " + establishment.name + "\n"
-                "Dirección: " + establishment.address + "\n"
+                "Dirección: " + establishment.address + "\n\n"
                 "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
                 "Hora: " + request.data.get("time") + "\n\n"
                 "Si tienes alguna pregunta, no dudes en contactarnos.\n"
                 "Atentamente,\n"
                 "Equipo de Nicelook"
-
             )
 
             send_mail(subject, message, settings.EMAIL_HOST_USER , [client.user.email], fail_silently=False)
@@ -549,11 +560,11 @@ def create_appointment(request):
             message_employee = (
                 f"Hola, {employee.user.first_name}, \n\n"
                 "Tienes una nueva cita en tu agenda en  " + establishment.name + ".\n\n"
-                "Detalles de la cita:\n"
+                "Detalles de la cita:\n\n"
                 "Cliente: " + client.user.first_name + " " + client.user.last_name + "\n"
-                "Correo del cliente: " + client.user.email + "\n"
-                "Servicios:\n" + services_details + "\n"
-                "Precio total: " + str(appointment.total_price) + "\n"
+                "Correo del cliente: " + client.user.email + "\n\n"
+                "Servicios:\n" + services_details + "\n\n"
+                f"Precio total: ${str(appointment.total_price)}\n\n"
                 "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
                 "Hora: " + request.data.get("time") + "\n\n"
                 "Si tienes alguna pregunta, no dudes en contactarnos.\n"
