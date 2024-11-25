@@ -18,13 +18,22 @@ def uploadImage(request):
         id_establisment = request.data.get('id_establisment')
         id_product = request.data.get('id_product')
         image = request.FILES.get('image')
+        code_product = request.data.get('code_product')
         if not id_establisment or not id_product or not image:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
+        
+        if id_product == None:
+            Product.objects.get(code = code_product)
+            ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
+                                        id_product=Product.objects.get(code = code_product),
+                                        image=imageField)
+            return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
 
         ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
                                     id_product=Product.objects.get(id=id_product),
                                     image=imageField)
+        
         return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
