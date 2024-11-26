@@ -27,7 +27,7 @@ def create_review(request, client_id, employee_id, appointment_id):
         comment = request.data.get('comment')
         rating = request.data.get('rating')
         
-        if appointment.estate != "COMPLETADA":
+        if appointment.estate != "Completada":
             return Response({'error': 'The appointment must be completed to leave a review'}, status=status.HTTP_400_BAD_REQUEST)  
         
         if ReviewEmployee.objects.filter(autor=autor, appointment=appointment).exists():
