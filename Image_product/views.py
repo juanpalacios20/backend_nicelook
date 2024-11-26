@@ -16,25 +16,19 @@ from django.http import JsonResponse
 def uploadImage(request):
     try:
         id_establisment = request.data.get('id_establisment')
-        id_product = request.data.get('id_product')
         image = request.FILES.get('image')
         code_product = request.data.get('code_product')
-        if not id_establisment or not id_product or not image:
+        if not id_establisment or not code_product or not image:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
         
-        if id_product == None:
-            Product.objects.get(code = code_product)
-            ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
+        Product.objects.get(code = code_product)
+        ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
                                         id_product=Product.objects.get(code = code_product),
                                         image=imageField)
-            return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
-
-        ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
-                                    id_product=Product.objects.get(id=id_product),
-                                    image=imageField)
-        
         return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
+        
+        
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -46,16 +40,15 @@ def getImageProduct(request):
         id_establisment = request.data.get('id_establisment')
         if not id_product or not id_establisment:   
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
-        imagesList = []
 
         image = ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product))
-        for image in image:
-            imageBase64 = base64.b64encode(image.image).decode('utf-8')
-            mime_type = "image/jpeg"
-            image_base64_url = f"data:{mime_type};base64,{imageBase64}"
-            imagesList.append({"imagen": image_base64_url})
         
-        return JsonResponse({'imagenes': imagesList})
+        imageBase64 = base64.b64encode(image.image).decode('utf-8')
+        mime_type = "image/jpeg"
+        image_base64_url = f"data:{mime_type};base64,{imageBase64}"
+        
+        
+        return JsonResponse({'imagen': image_base64_url}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
