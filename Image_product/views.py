@@ -41,7 +41,7 @@ def getImageProduct(request):
         if not id_product or not id_establisment:   
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        image = ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(id=id_product))
+        image = ImageProduct.objects.get(id_product=id_product, id_establisment=id_establisment)
         
         imageBase64 = base64.b64encode(image.image).decode('utf-8')
         mime_type = "image/jpeg"
