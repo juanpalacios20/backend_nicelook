@@ -385,9 +385,6 @@ def create_appointment(request):
     
     final_time = start_time + duration_total
     
-    print(start_time.time())
-    print(final_time.time())
-    
     appointments = Appointment.objects.filter(employee=employee, date=new_date)
     
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time).exists():
@@ -408,6 +405,8 @@ def create_appointment(request):
         day_date = "Sab"
     elif new_date.weekday() == 6:
         day_date = "Dom"
+        
+    print("Validando disponibilidad de horario 1")
         
     #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
@@ -430,6 +429,8 @@ def create_appointment(request):
                 if (final_time.time() > end_hour_t1 and final_time.time() <= start_hour_t2) or final_time.time() > end_hour_t2:
                     return Response({"error": "La cita no puede empezar antes o despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
     
+    print("Validando disponibilidad de horario 2")
+    
     for appointment in appointments:
         appointment_start_time = appointment.time
         for service in appointment.services.all():
@@ -447,9 +448,8 @@ def create_appointment(request):
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    print(employee.accestoken)
+    print("Validando disponibilidad de horario 3")
     refresh_access_token(employee.token, employee_id)
-    print(employee.accestoken)
     
     credentials = Credentials(
         token=employee.accestoken,
@@ -480,6 +480,7 @@ def create_appointment(request):
     except Exception as e:
         return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
     
+    print("Validando disponibilidad de horario 4")
     try:
         for service in services_list:
             appointment.services.add(service) 
@@ -537,42 +538,27 @@ def create_appointment(request):
             event_id = response.json().get('id')
             appointment.event_id = event_id
             appointment.save()
-            subject = "Cita en " + establishment.name
+            subject = f"Cita en {establishment.name}"
             message = (
-                "Hola,\n\n"
-                "Tienes una cita agendada en " + establishment.name + ".\n\n"
-                "Detalles de la cita:\n\n"
-                "Profesional: " + employee.user.first_name + " " + employee.user.last_name + "\n"
-                "Correo del profesional: " + employee.user.email + "\n\n"
-                "Servicios:\n" + services_details + "\n\n"
-                f"Precio total: ${str(appointment.total_price)}\n\n"
-                "Establecimiento: " + establishment.name + "\n"
-                "Dirección: " + establishment.address + "\n\n"
-                "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
-                "Hora: " + request.data.get("time") + "\n\n"
-                "Si tienes alguna pregunta, no dudes en contactarnos.\n"
+                f"Hola,\n\n"
+                f"Se ha agendado una cita en {establishment.name}. Aquí tienes los detalles:\n\n"
+                f"**Cliente:** {client.user.first_name} {client.user.last_name}\n"
+                f"**Correo del cliente:** {client.user.email}\n\n"
+                f"**Profesional:** {employee.user.first_name} {employee.user.last_name}\n"
+                f"**Correo del profesional:** {employee.user.email}\n\n"
+                f"**Servicios:**\n{services_details}\n\n"
+                f"**Precio total:** ${appointment.total_price}\n\n"
+                f"**Establecimiento:** {establishment.name}\n"
+                f"**Dirección:** {establishment.address}\n\n"
+                f"**Fecha:** {new_date.strftime('%Y-%m-%d')}\n"
+                f"**Hora:** {request.data.get('time')}\n\n"
+                "Si tienes alguna pregunta, no dudes en contactarnos.\n\n"
                 "Atentamente,\n"
                 "Equipo de Nicelook"
             )
 
-            send_mail(subject, message, settings.EMAIL_HOST_USER , [client.user.email], fail_silently=False)
-            subject_employee = "Cita agendada en " + establishment.name
-            message_employee = (
-                f"Hola, {employee.user.first_name}, \n\n"
-                "Tienes una nueva cita en tu agenda en  " + establishment.name + ".\n\n"
-                "Detalles de la cita:\n\n"
-                "Cliente: " + client.user.first_name + " " + client.user.last_name + "\n"
-                "Correo del cliente: " + client.user.email + "\n\n"
-                "Servicios:\n" + services_details + "\n\n"
-                f"Precio total: ${str(appointment.total_price)}\n\n"
-                "Fecha: " + new_date.strftime('%Y-%m-%d') + "\n"
-                "Hora: " + request.data.get("time") + "\n\n"
-                "Si tienes alguna pregunta, no dudes en contactarnos.\n"
-                "Atentamente,\n"
-                "Equipo de Nicelook"
-            )
-
-            send_mail(subject_employee, message_employee, settings.EMAIL_HOST_USER , [employee.user.email], fail_silently=False)
+            recipients = [client.user.email, employee.user.email]
+            send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
