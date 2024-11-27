@@ -105,6 +105,7 @@ def reschedule(request):
         # Actualizar fecha y hora en la base de datos
         appointment.date = new_date
         appointment.time = time
+       
         appointment.save()
 
         # Reagendar en Google Calendar
@@ -188,6 +189,15 @@ def update_google_calendar(access_token, calendar_id, appointment, time):
             {'email': appointment.employee.user.email},
         ],
     }
+    
+    if appointment.estate == "Cancelada":
+         # Crear un nuevo evento si no existe
+            response = service.events().insert(calendarId='primary', body=event_body).execute()
+            appointment.event_id = response['id']
+            appointment.state = "Pendiente"
+            appointment.save()
+            logger.info(f"Nuevo evento creado en Google Calendar con ID: {response['id']}")
+            return response
 
     # Intentar actualizar el evento
     try:
@@ -236,6 +246,7 @@ def change_state(request):
             appointment.estate = "Completada"
         elif state == "Cancelada":
             appointment.estate = "Cancelada"
+            cancel_google_calendar_event(appointment.event_id, appointment.employee)
         else:
             return Response({"error": "Invalid state value"}, status=status.HTTP_400_BAD_REQUEST)
         # Guardar los cambios
