@@ -615,9 +615,10 @@ def schedule_employee(request, employee_id):
                 })
             info_appoiments.append({
                 'id': appointment.id,
-                'time': appointment.time.strftime("%H:%M:%S"),
+                'time': appointment.time.strftime("%H:%M"),
                 'services': services,
                 'total': total,
+                'state': appointment.estate,
                 'method': appointment.method,
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name
             })
