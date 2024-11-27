@@ -422,11 +422,8 @@ def getInfoEmployee(request):
             employe_data['reviews'] = count
 
             # Obtener la imagen del empleado
-            image = EmployeeImage.objects.filter(
-                establishment_id=employee.establisment.id, 
-                employee_id=employee.id
-            ).first()
-
+        image = EmployeeImage.objects.filter(employee_id=id).first()
+        print(image)
         # Convertir la imagen a base64 si existe
         if image is not None:
             imageBase64 = base64.b64encode(image.image).decode('utf-8')
@@ -449,7 +446,7 @@ def getInfoEmployee(request):
                 del service['employee']
                 del service['service']['establisment']
                 del service['service']['commission']
-
+                
         return Response(employe_data, status=status.HTTP_200_OK)
 
     except Exception as e:
