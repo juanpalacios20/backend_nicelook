@@ -476,7 +476,7 @@ def create_time(request, employee_id):
         Time.objects.create(
             employee=employee,
             double_day=double_day,
-            state=False,
+            state=True,
             time_start_day_one=time_start_day_one,
             time_end_day_one=time_end_day_one,
             working_days=working_days
