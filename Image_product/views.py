@@ -63,7 +63,7 @@ def updateImageProduct(request):
         id_establisment = request.data.get('id_establisment')
         code_product = request.data.get('code_product')
         image = request.FILES.get('image')
-        if not id_establisment or not code_product or not id_image or not image:
+        if not id_establisment or not code_product or not image:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
 
