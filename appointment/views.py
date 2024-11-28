@@ -52,6 +52,7 @@ from django.conf import settings
 from employee_services.models import EmployeeServices
 from django.core.mail import send_mail
 from googleapiclient.discovery import build
+from receptionist.models import Receptionist
 
 @api_view(['POST'])
 def appointment_list(request):
@@ -98,19 +99,21 @@ def reschedule(request):
                                        employee=appointment.employee, time=time).exists():
             return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if appointment.estate in ["Completada", "Cancelada"]:
-            return Response({"error": "appointment canceled or completed"}, status=status.HTTP_400_BAD_REQUEST)
+        if appointment.estate in ["Completada"]:
+            return Response({"error": "appointment completed"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Actualizar fecha y hora en la base de datos
         appointment.date = new_date
         appointment.time = time
+       
         appointment.save()
 
         refresh_access_token(appointment.employee.token, appointment.employee.id)
 
         # Reagendar en Google Calendar
-        update_google_calendar(appointment.employee.accestoken, appointment.employee.googleid, appointment, time)
-        update_google_calendar(appointment.client.accestoken, appointment.client.googleid, appointment, time)
+        update_google_calendar(appointment, time)
+
+
 
         # Enviar correos de notificación
         send_email_notification(appointment)
@@ -123,7 +126,7 @@ def reschedule(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-def update_google_calendar(access_token, calendar_id, appointment, time):
+def update_google_calendar( appointment, time):
     """
     Actualiza un evento en Google Calendar.
     """
@@ -183,12 +186,51 @@ def update_google_calendar(access_token, calendar_id, appointment, time):
         'start': {'dateTime': start_time, 'timeZone': 'America/Bogota'},
         'end': {'dateTime': end_time, 'timeZone': 'America/Bogota'},
         'summary': f'Cita: {service_names}',
-        'description': f'Cita reagendada. Servicios: {service_names}',
+        'description': f'Cita reagendada. Servicios: {service_names} - Fecha: {appointment.date}\n - Hora: {appointment.time}\n - Precio total: {appointment.total_price}',
         'attendees': [
             {'email': appointment.client.user.email},
             {'email': appointment.employee.user.email},
         ],
     }
+    
+    try:
+        if appointment.estate == "Cancelada":
+            # Crear un nuevo evento si no existe
+            response = service.events().insert(calendarId='primary', body=event_body).execute()
+            
+            # Actualizar el ID del evento y cambiar el estado de la cita
+            appointment.event_id = response['id']
+            appointment.estate = "Pendiente"
+            appointment.save()
+            print(appointment.estate)
+
+            # Preparar el correo de notificación
+            subject = "Cita Reprogramada"
+            services = appointment.services.all()
+            service_names = ", ".join([service.name for service in services])
+            message = (
+                f"Hola,\n\n"
+                f"Le informamos que su cita ha sido reprogramada. La nueva fecha es el {appointment.date.strftime('%Y-%m-%d')} a las {appointment.time.strftime('%H:%M')}.\n\n"
+                f"Servicios: {service_names}\n"
+                f"Precio total: {appointment.total_price}\n\n"
+                f"Si tienes alguna pregunta, no dudes en contactarnos.\n"
+                f"Atentamente,\n"
+                f"Equipo de Nicelook"
+            )
+
+            # Enviar correo a los destinatarios
+            recipients = [appointment.client.user.email, appointment.employee.user.email]
+            send_mail(subject,  message, settings.EMAIL_HOST_USER, recipients)
+
+            # Log de éxito
+            logger.info(f"Nuevo evento creado en Google Calendar con ID: {response['id']}")
+            return response
+    except Exception as e:
+        # Capturar cualquier excepción y loguearla
+        logger.error(f"Error al crear el evento o al procesar la cita: {e}")
+        # Puedes optar por lanzar la excepción nuevamente o manejarla según sea necesario
+        raise e
+
 
     # Intentar actualizar el evento
     try:
@@ -212,10 +254,12 @@ def send_email_notification(appointment):
 
     subject = "Cita Reprogramada"
     message = (
-        f"Hola,\n\nTu cita ha sido reprogramada.\n\n"
+        f"Hola {appointment.client.user.first_name},\n\nTu cita ha sido reprogramada.\n\n"
         f"Servicios: {service_names}\n"
-        f"Fecha: {appointment.date.strftime('%Y-%m-%d')}\n"
-        f"Hora: {appointment.time.strftime('%H:%M')}\n\n"
+        f"Te esperamos el {appointment.date.strftime('%Y-%m-%d')} a las {appointment.time.strftime('%H:%M')}.\n\n"
+        f"Profesional: {appointment.employee.user.first_name}\n"
+        f"Precio total: {appointment.total_price}\n\n"
+        f"Si tienes alguna pregunta, no dudes en contactarnos.\n\n"
         "Gracias por usar nuestro servicio."
     )
     recipients = [appointment.client.user.email, appointment.employee.user.email]
@@ -235,6 +279,7 @@ def change_state(request):
             appointment.estate = "Completada"
         elif state == "Cancelada":
             appointment.estate = "Cancelada"
+            cancel_google_calendar_event(appointment, appointment.employee)
         else:
             return Response({"error": "Invalid state value"}, status=status.HTTP_400_BAD_REQUEST)
         # Guardar los cambios
@@ -568,3 +613,94 @@ def create_appointment(request):
     return Response({
         'message': 'Cita creada y agendada en Google Calendar exitosamente.',
     })
+
+@api_view(['PATCH'])
+def cancel_appointments_day(request):
+    try:
+        id_employee = request.data.get('id_employee')
+        employee = Employee.objects.get(id=id_employee)
+        establisment = Establisment.objects.get(employee=employee)
+        receptionist = Receptionist.objects.get(establisment =  establisment)
+        day = request.data.get('day')
+        month = request.data.get('month')
+        year = request.data.get('year')
+        # Obtener citas para el día y mes proporcionados
+        appointments = Appointment.objects.filter(date__day=day, date__month=month, date__year=year, employee=employee)
+        users=[]
+
+
+
+        # Cancelar citas
+        for appointment in appointments:
+            appointment.estate = "Cancelada"
+            appointment.save()
+            subject = "Cita cancelada"
+            users.append(appointment.client.user)
+            cancel_google_calendar_event(appointment.event_id, appointment.employee)
+
+            message = (
+                f"Hola {appointment.client.user.first_name},\n\n"
+                f"Lamentamos informarte que el profesional {appointment.employee.user.first_name} ha cancelado tu cita en {appointment.establisment.name} para el {appointment.date.strftime('%Y-%m-%d')} a las {appointment.time.strftime('%H:%M')}n\n"
+                f"prontamente te contactaremos para realizar la reprogramación de tu cita.\n\n"
+                f"Si tienes alguna pregunta, no dudes en contactarnos.\n"
+                f"Atentamente,\n"
+                f"Equipo de Nicelook"
+
+            )
+
+            send_mail(subject, message, settings.EMAIL_HOST_USER , [appointment.client.user.email], fail_silently=False)
+        
+
+        subject = f"Citas del profesional {employee.user.first_name} del dia {day}/{month}/{year} canceladas"
+
+        message = (
+        f"Hola {receptionist.user.first_name},\n\n"
+        f"Las citas del profesional {employee.user.first_name} del día {day}/{month}/{year} han sido canceladas.\n\n"
+        f"Te recomendamos comunicarte con los siguientes clientes para reagendar sus citas canceladas:\n\n"
+    )
+
+        for user in users:
+            message += (
+                f"{user.first_name} {user.last_name}\n"
+                f"Correo: {user.email}\n\n"
+            )
+
+        message += (
+            f"Si tienes alguna pregunta, no dudes en contactarnos.\n"
+            f"Atentamente,\n"
+            f"Equipo de Nicelook"
+        )
+
+        send_mail(subject, message, settings.EMAIL_HOST_USER , [receptionist.user.email], fail_silently=False)
+        
+
+        return Response({'message': 'Citas canceladas exitosamente.'}, status=200)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+def cancel_google_calendar_event(appointment, user):
+    try:
+        credentials = Credentials(
+            token=user.accestoken,
+            refresh_token=user.token,
+            client_id=config('CLIENT_ID'),
+            client_secret=config('CLIENTE_SECRET'),
+            token_uri='https://oauth2.googleapis.com/token'
+        )
+        service = build('calendar', 'v3', credentials=credentials)
+        service.events().delete(calendarId='primary', eventId=appointment.event_id).execute()
+        print(f"Evento con ID {appointment.event_id} cancelado exitosamente.")
+        subject = "Cita cancelada"
+        message = (
+            f"Hola,\n\n"
+            f"Lamentamos informarte que tu cita para el {appointment.date.strftime('%Y-%m-%d')} a las {appointment.time.strftime('%H:%M')} ha sido cancelada.\n\n"
+            f"Si tienes alguna pregunta, no dudes en contactarnos.\n"
+            f"Atentamente,\n"
+            f"Equipo de Nicelook"
+        )
+        recipients = [appointment.client.user.email, appointment.employee.user.email]
+        send_mail(subject, message, settings.EMAIL_HOST_USER , recipients)
+    except Exception as e:
+        print(f"Error al cancelar el evento {appointment.event_id}: {e}")
+        
