@@ -2,7 +2,6 @@ from django.db import models
 from client.models import Client
 from employee.models import Employee
 from appointment.models import Appointment
-
 # Create your models here.
 
 class ReviewEmployee (models.Model):

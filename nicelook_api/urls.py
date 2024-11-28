@@ -16,6 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, re_path, include
+import client
+import client.urls
+
+import product_payment
 from .social_auth_views import GoogleLogin
 import service.urls
 from . import views
@@ -28,23 +32,19 @@ urlpatterns = [
     path('api/', include('appointment.urls')),
     path('employee/', include('employee.urls')),
     path('category/', include('category.urls')),
+    path('Product/', include('product.urls')),#endpoints de productos
+    path('Product/', include('Image_product.urls')),#endpoints de imagenes
     path('api/', include(service.urls)),
     path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
-    path('register/admin/', views.register, name='register_admin'),
-    path('login/admin/', views.loginAdmin, name='login_admin'),
-    path('Product/add/', views.addProduct, name='add_product'),
-    path('Product/getAll/', views.getProducts, name='get_products'),
-    path('Product/update/', views.updateProduct, name='update_product'),
-    path('Product/delete/', views.deleteProduct, name='delete_product'),
-    path('Product/addImage/', views.uploadImage, name='add_image_product'),
-    path('Product/getImage/', views.getImageProduct, name='get_image_product'),
-    path('Product/updateImage/', views.updateImageProduct, name='update_image_product'),
-    path('Product/deleteImage/', views.deleteImageProduct, name='delete_image_product'),
     path('employee_services/', include('employee_services.urls')), 
     path('receptionist/', include('receptionist.urls')),
     path('review_employee/', include('review_employee.urls')),
     path('client/', include('client.urls')),
     path('service/', include('service.urls')),
+    path('administrator/', include('administrator.urls')),#endpoints de administrador
+    path('receptionist/', include('receptionist.urls')), #endpoints de recepcionista
+    path('client/', include(client.urls)),
+    path('api/', include('product_payment.urls')),
 ]

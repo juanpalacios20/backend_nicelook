@@ -28,6 +28,8 @@ def create_service(request):
     commission = request.data.get("commission")
     category = request.data.get("category")
     commission = int(commission)
+    image_file = request.FILES["image"]
+    image_data = image_file.read()
     print('id', establishment_id)
     print('name', name)
     print('price', price)
@@ -48,7 +50,8 @@ def create_service(request):
         #"duration": data.get("duration"),
         "commission": commission,
         "category": category,
-        "state": True
+        "state": True,
+        "image": image_data
     }
     
     try:
@@ -71,7 +74,6 @@ def create_service(request):
         return Response(
             {"error": "No se pudo crear el servicio."}, status=status.HTTP_400_BAD_REQUEST
         )
-    
     
 #ACTUALIZAR SERVICIO
 @api_view(["PUT"])
@@ -109,6 +111,15 @@ def update_service(request):
     
     if "category" in service_data:
         service.category = service_data["category"]
+    
+    if "state" in service_data:
+        if service_data["state"] == "true":
+            service.state = True
+        if service_data["state"] == "false":
+            service.state = False
+    
+    if "image" in service_data:
+        service.image = service_data["image"].read()
         
      # Guardar la nueva informacion 
     service.save()
@@ -127,7 +138,7 @@ def update_service(request):
 @api_view(["DELETE"])
 #@permission_classes([IsAuthenticated])
 def delete_service(request):
-    id = request.GET.get("idService")
+    id = request.data.get("idService")
     print("id", id)
     try:
         #Se obtiene el id del servicio y se busca en la base de datos
@@ -136,7 +147,7 @@ def delete_service(request):
         print("saliendo")
         print('service', service)
         
-    except service.DoesNotExist:
+    except Service.DoesNotExist:
         #Si no existe un servicio con el id enviado se responde con un codigo 404
         return Response(
             {"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND
@@ -164,7 +175,7 @@ def list_service(request):
     print('id', establisment_id)
     try:
         #Se obtienen todos los servicios que se encuentran en la base de datos
-        services = Service.objects.filter(establisment = Establisment.objects.get(id=establisment_id))
+        services = Service.objects.filter(establisment = establisment_id)
         
     except services is None:
         #Si la lista es vacia, se devulve un mensaje informando que no hay servicios registrados

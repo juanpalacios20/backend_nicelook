@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from .models import Schedule
-
-class scheduleSerializer(serializers.ModelSerializer):
+from .models import Time
+        
+class timeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Schedule
+        model = Time
         fields = '__all__'

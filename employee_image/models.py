@@ -6,7 +6,7 @@ from employee.models import Employee
 
 class EmployeeImage(models.Model):
     establishment_id = models.ForeignKey(Establisment, on_delete=models.CASCADE)
-    employee_id = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee_id = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='images')
     image = models.BinaryField()
     
     

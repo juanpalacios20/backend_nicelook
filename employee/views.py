@@ -1,12 +1,16 @@
+from datetime import date
 from rest_framework import viewsets
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from appointment.models import Appointment
+from appointment.serializers import appointmentSerializer
 from employee_image.models import EmployeeImage
 from employee_services.models import EmployeeServices
 from employee_services.serializers import employeeServicesSerializer
-from schedule.models import Schedule
+from review_employee.models import ReviewEmployee
+from review_employee.serializers import reviewEmployeeSerializer
 from employee.models import Employee
 from establisment.models import Establisment
 from employee.serializers import EmployeeSerializer
@@ -24,10 +28,14 @@ from employee_image.models import EmployeeImage
 from django.db import transaction
 from category.models import Category
 from service.models import Service
+from schedule.models import Time
+from django.views.decorators.csrf import csrf_exempt
+from datetime import timedelta
 from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authtoken.models import Token
+from receptionist.models import Receptionist
 
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
@@ -44,13 +52,21 @@ def employeeAddService(request, employee_id):
         # Obtener el ID del servicio y el ID del establecimiento desde la solicitud
         service_id = request.data.get('service_id')
         establisment_id = request.data.get('establisment_id')
+        hours = request.data.get('hours')
+        minutes = request.data.get('minutes')
+        
+        if hours is None or minutes is None:
+            return Response({"error": "Hours and minutes are required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Obtener el servicio que se desea agregar
         service = Service.objects.get(id=service_id)
+        establisment = Establisment.objects.get(id=establisment_id)
         
         # Verificar que el servicio pertenece al establecimiento especificado
+
         if service.establisment.id != establisment_id:
             return Response({"error": "El servicio no pertenece al establecimiento indicado."}, status=status.HTTP_400_BAD_REQUEST)
+
 
         # Verificar que el estado del servicio sea True
         if not service.state:
@@ -60,11 +76,16 @@ def employeeAddService(request, employee_id):
         if EmployeeServices.objects.filter(employee=employee, service=service).exists():
             return Response({"message": "El servicio ya está asignado a este empleado."}, status=status.HTTP_400_BAD_REQUEST)
         
+        if hours == 00:
+            duration = timedelta(minutes=minutes)
+        else:
+            duration = timedelta(hours=hours, minutes=minutes)
+        
         # Crear la relación con la comisión del servicio
         employee_service = EmployeeServices.objects.create(
             employee=employee,
             service=service,
-            commission=service.commission
+            duration=duration
         )
 
         # Serializar y devolver la respuesta
@@ -241,8 +262,7 @@ def create_employee(request, establisment_id):
 
     # Datos del Empleado
     phone = request.data.get('phone')
-    especialty = request.data.get('especialty', [])  # Lista de especialidades (IDs)
-    schedule = request.data.get('schedule', None)  # Opcional
+    especialty = request.data.get('especialty')
     googleid = request.data.get('googleid', None)  # Opcional
     accestoken = request.data.get('accestoken', None)  # Opcional
     token = request.data.get('token', None)  # Opcional
@@ -281,8 +301,16 @@ def create_employee(request, establisment_id):
             return Response({'error': 'Agenda no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinar el siguiente código para el empleado
-    next_code = Employee.objects.aggregate(Max('code'))['code__max'] or 0
-    next_code += 1  # Incrementar para asignar un nuevo código
+    next_code = Employee.objects.aggregate(Max('code'))['code__max']
+
+    # Si next_code es None, asignamos el primer código
+    if next_code is None:
+        next_code = 1
+    else:
+        next_code = int(next_code) + 1  # Convertir el código a número y aumentar
+
+    # Convertir el código a cadena
+    next_code_str = str(next_code)
     
 
     # Creación de usuario
@@ -302,22 +330,32 @@ def create_employee(request, establisment_id):
 
             # Creación de empleado
             state = True  # Estado inicial del empleado
-            employee = Employee.objects.create(
-                user=user,
-                code=next_code,  # Asignar el código secuencial
-                phone=phone,
-                state=state,
-                schedule=schedule if schedule is not None else None,  # Puede ser None
-                googleid=googleid,
-                token= token,
-                accestoken=accestoken,
-                establisment=establisment
-            )
-
-            # Asignar especialidades
-            especialties = Category.objects.filter(id__in=especialty)
-            employee.especialty.set(especialties)
-
+            if especialty != "Recepcionista":
+                employee = Employee.objects.create(
+                    user=user,
+                    code=next_code_str,  # Asignar el código secuencial
+                    phone=phone,
+                    state=state,
+                    googleid=googleid,
+                    token= token,
+                    accestoken=accestoken,
+                    establisment=establisment
+                )
+                especialty, created = Category.objects.get_or_create(name=especialty)
+                if created:
+                    especialty.save()
+                employee.especialty.add(especialty)
+            else:
+                receptionist = Receptionist.objects.create(
+                    user=user,  # Asignar el código secuencial
+                    phone=phone,
+                    googleid=googleid,
+                    token= token,
+                    accestoken=accestoken,
+                    establisment=establisment
+                )
+                receptionist.save()
+                
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -395,57 +433,320 @@ def delete_photo(request, establisment_id, employee_id):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+ 
+@csrf_exempt   
+@api_view(['POST'])
+def create_time(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        print("hola")
+        times = Time.objects.filter(employee=employee)
+        print("hola2")    
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    double_day = request.data.get('double_day')
+    time_start_day_one = request.data.get('time_start_day_one')
+    time_end_day_one = request.data.get('time_end_day_one')
+    working_days = request.data.get('working_days', [])
+
+    if not time_start_day_one or not time_end_day_one:
+        return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    for time in times:
+        repeated = list(set(working_days) & set(time.working_days))
+        if repeated:
+            return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if double_day:
+        time_start_day_two = request.data.get('time_start_day_two')
+        time_end_day_two = request.data.get('time_end_day_two')
+        
+        if not time_start_day_two or not time_end_day_two:
+            return Response({"error": "El horario del segundo turno es obligatorio si hay doble turno"}, status=status.HTTP_400_BAD_REQUEST)
+
+        Time.objects.create(
+            employee=employee,
+            double_day=double_day,
+            state=True,
+            time_start_day_one=time_start_day_one,
+            time_end_day_one=time_end_day_one,
+            time_start_day_two=time_start_day_two,
+            time_end_day_two=time_end_day_two,
+            working_days=working_days
+        )
+    else:
+        Time.objects.create(
+            employee=employee,
+            double_day=double_day,
+            state=True,
+            time_start_day_one=time_start_day_one,
+            time_end_day_one=time_end_day_one,
+            working_days=working_days
+        )
+
+    return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PATCH'])
+def update_time(request, time_id):
+    try:
+        time = Time.objects.get(id=time_id)
+        double_day = request.data.get('double_day', False)
+        time_start_day_one = request.data.get('time_start_day_one')
+        time_end_day_one = request.data.get('time_end_day_one')
+        working_days = request.data.get('working_days')
+        time_start_day_two = request.data.get('time_start_day_two')
+        time_end_day_two = request.data.get('time_end_day_two')
+
+        if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
+            return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
+
+        time.double_day = double_day if double_day is not None else time.double_day
+        time.time_start_day_one = time_start_day_one if time_start_day_one is not None else time.time_start_day_one
+        time.time_end_day_one = time_end_day_one if time_end_day_one is not None else time.time_end_day_one
+        time.working_days = working_days if working_days is not None else time.working_days
+        time.time_start_day_two = time_start_day_two if time_start_day_two is not None else time.time_start_day_two
+        time.time_end_day_two = time_end_day_two if time_end_day_two is not None else time.time_end_day_two
+
+        time.save()
+
+        return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
+@api_view(['DELETE'])
+def delete_time(request, time_id):
+    try:
+        time = Time.objects.get(id=time_id)
+        time.delete()
+        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+def get_time(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        times = Time.objects.filter(employee=employee)
+
+        # Preparamos los datos a devolver
+        times_data = []
+        for time in times:
+            time_data = {
+                'id': time.id,
+                'double_day': time.double_day,
+                'time_start_day_one': time.time_start_day_one,
+                'time_end_day_one': time.time_end_day_one,
+                'working_days': time.working_days,
+                'time_start_day_two': time.time_start_day_two,
+                'time_end_day_two': time.time_end_day_two,
+            }
+            times_data.append(time_data)  # Agregar a la lista
+
+        return Response(times_data, status=status.HTTP_200_OK)  # Devolver la lista completa
+
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def history_appointments(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        day = int(request.GET.get('day'))
+        if not year or not month or not  day:
+            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+        appointments = Appointment.objects.filter(employee=employee,date__year=year,date__month=month,date__day=day).filter(Q(estate__icontains='Completada') | Q(estate__icontains='Cancelada')
+)
+        if not appointments.exists(): 
+            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
+        info_appoiments = []
+        total_earnings = 0
+        for appointment in appointments:
+            services = []
+            total = 0
+            review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee, appointment=appointment.id).first()
+            rSerializer = reviewEmployeeSerializer(review)
+            for service in appointment.services.all():
+                total += (service.price - (service.price * service.commission))
+                services.append({
+                    'name': service.name,
+                })
+                total_earnings += total
+            info_appoiments.append({
+                'id': appointment.id,
+                'time': appointment.time.strftime("%H:%M"),
+                'services': services,
+                'total': total,
+                'method': appointment.method,
+                'state': appointment.estate,
+                'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
+                'rating': rSerializer.data['rating'],
+            })
+        return Response({"appointments": info_appoiments, "earnings": total_earnings}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+def schedule_employee(request, employee_id):
+    try:
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        day = int(request.GET.get('day'))
+        appointments_date = date(year, month, day) 
+        if not year or not month or not  day:
+            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+        appointments = Appointment.objects.filter(date = appointments_date, employee_id = employee_id, estate__icontains='Pendiente')
+        if not appointments.exists():
+            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
+        info_appoiments = []
+        for appointment in appointments:
+            services = []
+            total = 0
+            for service in appointment.services.all():
+                total += service.price
+                services.append({
+                    'name': service.name,
+                })
+            info_appoiments.append({
+                'id': appointment.id,
+                'time': appointment.time.strftime("%H:%M"),
+                'services': services,
+                'total': total,
+                'state': appointment.estate,
+                'method': appointment.method,
+                'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name
+            })
+        return Response({"appointments": info_appoiments}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
-class EmployeeLogin(SocialLoginView):
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+from .models import Employee
+from rest_framework_simplejwt.tokens import RefreshToken
+from decouple import config
+
+class EmployeeLogin(APIView):
     def post(self, request, *args, **kwargs):
-        token = request.data.get('token')
+        auth_code = request.data.get('auth_code')
 
-        # Validar el ID Token usando Google API
-        token_info_url = f'https://oauth2.googleapis.com/tokeninfo?id_token={token}'
-        token_info_response = requests.get(token_info_url)
+        if not auth_code:
+            return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if token_info_response.status_code != 200:
-            return Response({'error': 'Token invalido.'}, status=status.HTTP_400_BAD_REQUEST)
+        # URL para obtener los tokens de Google
+        token_url = 'https://oauth2.googleapis.com/token'
 
-        # Si el token es válido, obtener los datos del usuario
-        token_info = token_info_response.json()
-        email = token_info.get('email')
-        first_name = token_info.get('given_name')
-        last_name = token_info.get('family_name')
-        google_id = token_info.get('sub')
+        # Datos necesarios para hacer la solicitud POST a Google para obtener los tokens
+        data = {
+            'code': auth_code,  # El authorization code que recibiste del frontend
+            'client_id': config("CLIENT_ID"),  # Tu client_id de Google
+            'client_secret': config("CLIENTE_SECRET"),  # Tu client_secret de Google
+            'redirect_uri': "http://localhost:5173",  # Tu URI de redirección (debe coincidir con la configuración en Google)
+            'grant_type': 'authorization_code',  # Tipo de flujo
+        }
 
-        # Verificar si el correo electrónico está verificado
-        if not token_info.get('email_verified'):
-            return Response({'error': 'El Email no esta verificado.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Realizar la solicitud POST para obtener los tokens
+        response = requests.post(token_url, data=data)
+        print(response)
+        
+        if response.status_code != 200:
+            return Response({'error': 'Failed to exchange authorization code for tokens', 'details': response.json()}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Si el usuario no existe, lanzar una excepción personalizada
-            return Response({'error': 'El usuario no existe'}, status=status.HTTP_404_NOT_FOUND)
+        # Si la solicitud es exitosa, obtener los tokens
+        tokens = response.json()
+        access_token = tokens.get('access_token')
+        refresh_token = tokens.get('refresh_token')
 
-        try:
-            employee = Employee.objects.get(user=user)
-        except Employee.DoesNotExist:
-            # Si el empleado no existe, lanzar una excepción personalizada
-            return Response({'error': 'El usuario no se enceuntra registrado como empleado'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generar tokens de acceso (JWT)
-        refresh = RefreshToken.for_user(user)
+        if not access_token:
+            return Response({'error': 'Access token not found in the response'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Agregar información adicional al token
-        refresh['email'] = user.email
-        refresh['first_name'] = user.first_name
-        refresh['last_name'] = user.last_name
-        refresh['google_id'] = google_id
-        refresh['establishment'] = employee.establisment.id
-        refresh['state'] = employee.state
-        refresh['code'] = employee.code
+        # Usar el access_token para obtener la información del usuario desde Google
+        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        user_info_response = requests.get(user_info_url, headers={'Authorization': f'Bearer {access_token}'})
+        
+        if user_info_response.status_code != 200:
+            return Response({'error': 'Failed to retrieve user information from Google'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Responder con el token de acceso y la información adicional
-        return Response({
-            'access_token': str(refresh.access_token),
-            'refresh_token': str(refresh),
-            'email': refresh.access_token.get('email'),
-        }, status=status.HTTP_200_OK)
+        # Datos del usuario
+        user_data = user_info_response.json()
+        email = user_data.get('email')
+        google_id = user_data.get('id')
+        first_name = user_data.get('given_name')
+        last_name = user_data.get('family_name')
+
+        if not user_data.get('verified_email', False):
+            return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar si el usuario ya existe en la base de datos
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        employee = Employee.objects.filter(user=user).first()
+        if employee:
+            employee.token = refresh_token
+            employee.accestoken = access_token
+            employee.googleid = google_id
+            employee.save()
+
+            # Generar el token JWT para el usuario
+            refresh = RefreshToken.for_user(user)
+            refresh['email'] = user.email
+            refresh['first_name'] = user.first_name
+            refresh['last_name'] = user.last_name
+            refresh['google_id'] = google_id
+
+            # Responder con el JWT y los datos del usuario
+            return Response({
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'establishment_id': employee.establisment.id,
+                'id_employee': employee.id,
+                'isArtist': True
+            }, status=status.HTTP_200_OK)
+        
+        receptionist = Receptionist.objects.filter(user=user).first()
+        if receptionist:
+            receptionist.token = refresh_token
+            receptionist.accestoken = access_token
+            receptionist.googleid = google_id
+            receptionist.save()
+
+            # Generar el token JWT para el usuario
+            refresh = RefreshToken.for_user(user)
+            refresh['email'] = user.email
+            refresh['first_name'] = user.first_name
+            refresh['last_name'] = user.last_name
+            refresh['google_id'] = google_id
+
+            # Responder con el JWT y los datos del usuario
+            return Response({
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'establishment_id': receptionist.establisment.id,
+                'id_receptionist': receptionist.id,
+                'isArtist': False
+            }, status=status.HTTP_200_OK)
+        if not receptionist and not employee:
+            return Response({'error': 'Receptionist and Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+       

@@ -8,6 +8,9 @@ from administrator.models import Administrator
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from establisment.models import Establisment
+from receptionist.models import Receptionist
+from employee.models import Employee
+from client.models import Client
 
 User = get_user_model()
 
@@ -42,11 +45,15 @@ class GoogleLogin(SocialLoginView):
                 'last_name': last_name,
             }
         )
-
+        contact_methods = {"mail": "mail"}
+        
         if created:
             # Crear un administrador si el usuario es nuevo
-            establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name)
-            Administrator.objects.create(user=user, establisment=establishment)
+            establishment = Establisment.objects.create(name="Establecimiento de "+first_name, address="Dirección de "+first_name, city="Ciudad de "+first_name, contact_methods=contact_methods)
+            Administrator.objects.create(user=user, establisment=establishment, googleid=google_id, token=token)
+        
+        if Client.objects.filter(user=user).exists() or Receptionist.objects.filter(user=user).exists() or Employee.objects.filter(user=user).exists():
+            return Response({'error': 'El usuario ya se encuentra registrado y no es un administrador'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)
@@ -57,12 +64,17 @@ class GoogleLogin(SocialLoginView):
         refresh['last_name'] = user.last_name
         refresh['google_id'] = google_id
         id = Administrator.objects.get(user=user).establisment.id
-        print(id)
+        admin = Administrator.objects.get(user=user)
+        admin.accestoken = str(refresh.access_token)
+        
         refresh['establishment'] = id
+        
+        admin = Administrator.objects.get(user=user)
+        admin.accestoken = str(refresh.access_token)
+        admin.save()
 
         # Responder con el token de acceso y la información adicional
         return Response({
             'access_token': str(refresh.access_token),  # Token de acceso con información del usuario
-            'refresh_token': str(refresh),
-            'email': refresh.access_token.get('email'), # Token de refresco
+            'refresh_token': str(refresh), # Token de refresco
         }, status=status.HTTP_200_OK)
