@@ -35,6 +35,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authtoken.models import Token
+from datetime import datetime
 from receptionist.models import Receptionist
 
 # Create your views here.
@@ -42,53 +43,77 @@ class employeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
     queryset = Employee.objects.all()
     
+@api_view(['POST'])
+def setDurationService(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        
+        service_id = request.data.get('service_id')
+        
+        if not service_id:
+            return Response({"error": "Service ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        service = Service.objects.get(id=service_id)
+        
+        employee_service = EmployeeServices.objects.filter(employee=employee, service=service).first()
+        
+        duration_str = request.data.get('duration')
+        if not duration_str:
+            return Response({"error": "Duration is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            duration_time = datetime.strptime(duration_str, "%H:%M:%S")
+            duration = timedelta(hours=duration_time.hour, minutes=duration_time.minute, seconds=duration_time.second)
+        except ValueError:
+            return Response({"error": "Invalid duration format. Use HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        employee_service.duration = duration
+        employee_service.save()
+        
+        serializer = employeeServicesSerializer(employee_service)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    except Service.DoesNotExist:
+        return Response({"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 def employeeAddService(request, employee_id):
     try:
-        # Obtener el empleado por ID
         employee = Employee.objects.get(id=employee_id)
         
-        # Obtener el ID del servicio y el ID del establecimiento desde la solicitud
         service_id = request.data.get('service_id')
-        establisment_id = request.data.get('establisment_id')
-        hours = request.data.get('hours')
-        minutes = request.data.get('minutes')
-        
-        if hours is None or minutes is None:
-            return Response({"error": "Hours and minutes are required."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Obtener el servicio que se desea agregar
-        service = Service.objects.get(id=service_id)
-        establisment = Establisment.objects.get(id=establisment_id)
-        
-        # Verificar que el servicio pertenece al establecimiento especificado
+        establisment_id = employee.establisment.id
+        duration_str = request.data.get('duration')
 
+        if not service_id or not duration_str:
+            return Response({"error": "Service ID and duration are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            duration_time = datetime.strptime(duration_str, "%H:%M:%S")
+            duration = timedelta(hours=duration_time.hour, minutes=duration_time.minute, seconds=duration_time.second)
+        except ValueError:
+            return Response({"error": "Invalid duration format. Use HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        service = Service.objects.get(id=service_id)
         if service.establisment.id != establisment_id:
             return Response({"error": "El servicio no pertenece al establecimiento indicado."}, status=status.HTTP_400_BAD_REQUEST)
 
-
-        # Verificar que el estado del servicio sea True
         if not service.state:
             return Response({"error": "El servicio no está activo."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verificar si ya existe la relación para evitar duplicados
+
         if EmployeeServices.objects.filter(employee=employee, service=service).exists():
             return Response({"message": "El servicio ya está asignado a este empleado."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if hours == 00:
-            duration = timedelta(minutes=minutes)
-        else:
-            duration = timedelta(hours=hours, minutes=minutes)
-        
-        # Crear la relación con la comisión del servicio
+
         employee_service = EmployeeServices.objects.create(
             employee=employee,
             service=service,
             duration=duration
         )
 
-        # Serializar y devolver la respuesta
         serializer = employeeServicesSerializer(employee_service)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

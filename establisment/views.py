@@ -197,13 +197,15 @@ def get_filter_payments_service(request, establisment_id):
         return JsonResponse({'error': "Something went wrong"}, status=500)
 
 @api_view(['GET'])
-def servicesByEstablisment(request, establisment_id):
+def servicesByEstablisment(request, employee_id):
     try:
         # Verificar si el establecimiento existe
-        establisment = Establisment.objects.get(id=establisment_id)
-
+        employee = Employee.objects.get(id=employee_id)
         # Obtener los servicios del establecimiento
-        services = Service.objects.filter(establisment=establisment, state=True)
+        
+        employee_services = EmployeeServices.objects.filter(employee=employee)
+        
+        services = Service.objects.exclude(id__in=[service.service.id for service in employee_services])
 
         # Serializar y devolver la respuesta
         serializer = serviceSerializer(services, many=True)
