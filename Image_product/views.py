@@ -23,6 +23,8 @@ def uploadImage(request):
         imageField = image.read()
         
         Product.objects.get(code = code_product)
+        if ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(code = code_product)).exists():
+            return Response({'error': 'Image already exists'}, status=status.HTTP_400_BAD_REQUEST)
         ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
                                         id_product=Product.objects.get(code = code_product),
                                         image=imageField)
@@ -48,7 +50,7 @@ def getImageProduct(request):
         image_base64_url = f"data:{mime_type};base64,{imageBase64}"
         
         
-        return JsonResponse({'imagen': image_base64_url}, status=status.HTTP_200_OK)
+        return Response({'imagen': image_base64_url}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
