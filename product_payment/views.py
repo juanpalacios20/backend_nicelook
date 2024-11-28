@@ -286,8 +286,6 @@ def complete_payment(request):
         for p in product:
             product_pay = Product.objects.get(id=p.id)
             detailsP = ProductPaymentDetail.objects.filter(payment=payment, product=product_pay).first()
-            product_pay.quantity -= detailsP.quantity
-            product_pay.save()
             products_info.append({
                 "name": product_pay.name,
                 "quantity": detailsP.quantity,
