@@ -39,6 +39,10 @@ urlpatterns = [
     path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
     path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
     path('employee_services/', include('employee_services.urls')), 
+    path('receptionist/', include('receptionist.urls')),
+    path('review_employee/', include('review_employee.urls')),
+    path('client/', include('client.urls')),
+    path('service/', include('service.urls')),
     path('administrator/', include('administrator.urls')),#endpoints de administrador
     path('receptionist/', include('receptionist.urls')), #endpoints de recepcionista
     path('client/', include(client.urls)),
