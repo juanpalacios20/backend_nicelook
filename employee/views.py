@@ -589,16 +589,15 @@ def history_appointments(request, employee_id):
         if not appointments.exists(): 
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
         info_appoiments = []
+        total_earnings = 0
         for appointment in appointments:
-            total_earnings = 0
             services = []
             total = 0
             review = ReviewEmployee.objects.filter(autor=appointment.client, employee=employee, appointment=appointment.id).first()
             rSerializer = reviewEmployeeSerializer(review)
             for service in appointment.services.all():
                 total += (service.price - (service.price * service.commission))
-                print(total)
-                print(total_earnings)
+                print(f"servicio {service}",total)
                 services.append({
                     'name': service.name,
                 })
@@ -613,8 +612,7 @@ def history_appointments(request, employee_id):
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
                 'rating': rSerializer.data['rating'],
             })
-            print(total, total_earnings)
-            print(services)
+        print("total ganancias", total_earnings)
         return Response({"appointments": info_appoiments, "earnings": total_earnings}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
