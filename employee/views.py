@@ -319,11 +319,6 @@ def create_employee(request, establisment_id):
         return Response({'error': 'El email ya está registrado.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar agenda si se proporciona
-    if schedule:
-        try:
-            schedule = Schedule.objects.get(id=schedule)
-        except Schedule.DoesNotExist:
-            return Response({'error': 'Agenda no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
     # Determinar el siguiente código para el empleado
     next_code = Employee.objects.aggregate(Max('code'))['code__max']
@@ -602,10 +597,11 @@ def history_appointments(request, employee_id):
             rSerializer = reviewEmployeeSerializer(review)
             for service in appointment.services.all():
                 total += (service.price - (service.price * service.commission))
+                print(f"servicio {service}",total)
                 services.append({
                     'name': service.name,
                 })
-                total_earnings += total
+            total_earnings += total
             info_appoiments.append({
                 'id': appointment.id,
                 'time': appointment.time.strftime("%H:%M"),
@@ -616,6 +612,7 @@ def history_appointments(request, employee_id):
                 'client': appointment.client.user.first_name + ' ' + appointment.client.user.last_name,
                 'rating': rSerializer.data['rating'],
             })
+        print("total ganancias", total_earnings)
         return Response({"appointments": info_appoiments, "earnings": total_earnings}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

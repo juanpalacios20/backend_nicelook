@@ -579,7 +579,9 @@ def create_appointment(request):
                 'error': 'No se pudo crear el evento en Google Calendar.',
                 'details': response.json()
         }, status=500)
+        
         else:
+            print("Evento creado")
             event_id = response.json().get('id')
             appointment.event_id = event_id
             appointment.save()
@@ -604,6 +606,7 @@ def create_appointment(request):
 
             recipients = [client.user.email, employee.user.email]
             send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
+            print("Correo enviado")
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
