@@ -37,11 +37,31 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authtoken.models import Token
 from datetime import datetime
 from receptionist.models import Receptionist
+from review_employee.models import ReviewEmployee
+from review_employee.serializers import reviewEmployeeSerializer
 
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
     queryset = Employee.objects.all()
+  
+@api_view(["GET"])  
+def professional_reviews(request, professional_id):
+    try:
+        professional_reviews = ReviewEmployee.objects.filter(employee_id=professional_id)
+        
+        professional_reviews_serialized = reviewEmployeeSerializer(professional_reviews, many=True)
+
+        return Response(
+            {"data": professional_reviews_serialized.data},
+            status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Error interno del servidor: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
 @api_view(['POST'])
 def setDurationService(request, employee_id):
