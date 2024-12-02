@@ -54,7 +54,8 @@ def update_receptionist(request, receptionist_id):
         
         if state != receptionist.state:
             receptionist.state = state
-            
+        
+        receptionist.user.save()
         receptionist.save()
         
         receptionist_serialized = receptionistSerializer(receptionist)
