@@ -283,9 +283,11 @@ def complete_payment(request):
         payment.save()
         product = payment.products.all()
         products_info = []
+        discount_total = 0
         for p in product:
             product_pay = Product.objects.get(id=p.id)
             detailsP = ProductPaymentDetail.objects.filter(payment=payment, product=product_pay).first()
+            discount_total += (product_pay.price * (product_pay.discount/100)) * detailsP.quantity
             products_info.append({
                 "name": product_pay.name,
                 "quantity": detailsP.quantity,
@@ -304,7 +306,7 @@ Establecimiento: {payment.establisment.name}
 Cliente: {payment.client.user.first_name} {payment.client.user.last_name}
 Fecha: {payment.date}
 Total: ${payment.total_price}
-Descuento: ${payment.discount}
+Descuento: ${discount_total}
 
 Productos:
 {products_details}
@@ -315,6 +317,7 @@ Gracias por preferirnos,
 Nicelook"""
 
         remitente = settings.EMAIL_HOST_USER
+        print(payment.client.user.email)
         destinatarios = [payment.client.user.email]
 
         send_mail(asunto, mensaje, remitente, destinatarios)
@@ -465,7 +468,7 @@ def delete_product(request, code):
         payments = Product_payment.objects.filter(products=product, state=True)
         
         # Valida si hay detalles de pagos asociados
-        details = ProductPaymentDetail.objects.filter(payment__in=payments).first()
+        details = ProductPaymentDetail.objects.filter(payment__in=payments, product=product).first()
         if not details:
             return Response({'message': 'No payment details found for this product'}, status=status.HTTP_404_NOT_FOUND)
         
