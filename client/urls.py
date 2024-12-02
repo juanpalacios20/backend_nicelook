@@ -11,5 +11,6 @@ urlpatterns = [
     path('client_appointment_history/<int:client_id>/', views.client_appointment_history),
     path('get_client/<int:client_id>/', views.get_client),
     path('update_client/<int:client_id>/', views.update_client),
+    path('client_appointments/<int:client_id>/', views.client_appointments),
     path('login/', views.ClientLoginView.as_view()),
 ]

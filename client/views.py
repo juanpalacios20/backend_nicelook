@@ -21,6 +21,22 @@ class clientViewSet(viewsets.ModelViewSet):
     serializer_class = clientSerializer
     queryset = Client.objects.all()
     
+@api_view(['GET'])
+def client_appointments(request, client_id):
+    try:
+        appointments = Appointment.objects.filter(client_id=client_id, estate="Pendiente").order_by('date')
+        
+        appointments_serialized = appointmentSerializer(appointments, many=True)
+        
+        return Response(
+            {
+                'data': appointments_serialized.data,
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def client_appointment_history(request, client_id):

@@ -318,13 +318,6 @@ def create_employee(request, establisment_id):
     if User.objects.filter(email=email).exists():
         return Response({'error': 'El email ya está registrado.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validar agenda si se proporciona
-    if schedule:
-        try:
-            schedule = Schedule.objects.get(id=schedule)
-        except Schedule.DoesNotExist:
-            return Response({'error': 'Agenda no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
     # Determinar el siguiente código para el empleado
     next_code = Employee.objects.aggregate(Max('code'))['code__max']
 
