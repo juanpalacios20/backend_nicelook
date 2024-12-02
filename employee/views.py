@@ -194,10 +194,10 @@ def update_employee(request):
 # Listar empleados, no recibe parámetros, ejemplo: /employee_list/
 @api_view(['GET'])
 def employee_list(request, establishment_id):
-    employees = Employee.objects.filter(establishment_id=establishment_id)
+    employees = Employee.objects.filter(establisment_id=establishment_id)
     employees_serialized = EmployeeSerializer(employees, many=True)
     
-    receptionists = Receptionist.objects.filter(establishment_id=establishment_id)
+    receptionists = Receptionist.objects.filter(establisment_id=establishment_id)
     receptionists_serialized = receptionistSerializer(receptionists, many=True)
     
     return Response(
