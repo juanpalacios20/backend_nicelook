@@ -10,6 +10,7 @@ class Receptionist (models.Model):
     googleid = models.CharField(null=True, blank=True)
     token = models.CharField(null=True, blank=True)
     accestoken = models.CharField(null=True, blank=True)
+    state = models.BooleanField(default=True)
     
     def __str__ (self):
         return self.user.username
