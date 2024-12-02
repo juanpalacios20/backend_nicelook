@@ -39,6 +39,7 @@ from datetime import datetime
 from receptionist.models import Receptionist
 from review_employee.models import ReviewEmployee
 from review_employee.serializers import reviewEmployeeSerializer
+from receptionist.serializers import receptionistSerializer
 
 # Create your views here.
 class employeeViewSet(viewsets.ModelViewSet):
@@ -192,10 +193,17 @@ def update_employee(request):
     
 # Listar empleados, no recibe parámetros, ejemplo: /employee_list/
 @api_view(['GET'])
-def employee_list(request):
-    employees = Employee.objects.all()
-    serializer = EmployeeSerializer(employees, many=True)
-    return Response(serializer.data)
+def employee_list(request, establishment_id):
+    employees = Employee.objects.filter(establishment_id=establishment_id)
+    employees_serialized = EmployeeSerializer(employees, many=True)
+    
+    receptionists = Receptionist.objects.filter(establishment_id=establishment_id)
+    receptionists_serialized = receptionistSerializer(receptionists, many=True)
+    
+    return Response(
+        {"employees": employees_serialized.data, "receptionists": receptionists_serialized.data},
+        status=status.HTTP_200_OK
+    )
 
 # buscar empleados, recibe un query en el URL, ejemplo: /search_employees/?q=nombre o apellido o ambos
 @api_view(['GET'])
