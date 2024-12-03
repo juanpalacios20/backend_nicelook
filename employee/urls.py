@@ -12,7 +12,7 @@ urlpatterns = [
     path('create_employee/<int:establisment_id>/', views.create_employee, name='create_employee'),
     path('get_employees/', views.get_employees, name='get_employees'),
     path('delete_employee/', views.delete_employee, name='delete_employee'),
-    path('employee_list/', views.employee_list, name='employee_list'),
+    path('employee_list/<int:establishment_id>/', views.employee_list, name='employee_list'),
     path('search_employees/', views.search_employees, name='search_employees'),
     path('update_employee/', views.update_employee, name='update_employee'),
     path('upload_employee_photo/<int:establisment_id>/<int:employee_id>/', views.upload_employee_photo, name='upload_employee_photo'),
@@ -27,4 +27,5 @@ urlpatterns = [
     path('update_time/<int:time_id>/', views.update_time, name='update_time'),
     path('delete_time/<int:time_id>/', views.delete_time, name='delete_time'),
     path('EmployeeLogin/', EmployeeLogin.as_view(), name='employee_login'),
+    path('professional_reviews/<int:professional_id>/', views.professional_reviews, name="professional_reviews")
 ]

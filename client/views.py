@@ -15,12 +15,31 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from dj_rest_auth.registration.views import SocialLoginView
 from django.contrib.auth.models import User
+from product_payment.models import Product_payment
+from product_payment.serializers import ProductPaymentSerializer
 
 # Create your views here.
 class clientViewSet(viewsets.ModelViewSet):
     serializer_class = clientSerializer
     queryset = Client.objects.all()
+
+@api_view(['GET'])
+def client_product_purchases(request, client_id):
+    try:
+        purchases = Product_payment.objects.filter(client_id=client_id, state=False)
+        
+        purchases_serialized = ProductPaymentSerializer(purchases, many=True)
+        
+        return Response(
+            {"data": purchases_serialized.data}, 
+            status=status.HTTP_200_OK
+        )
     
+    except Exception as e:
+        return Response(
+            {'error': f'Error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
 @api_view(['GET'])
 def client_appointment_history(request, client_id):

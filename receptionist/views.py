@@ -27,6 +27,47 @@ class receptionistViewSet(viewsets.ModelViewSet):
     serializer_class = receptionistSerializer
     queryset = Receptionist.objects.all()
 
+@api_view(["PUT"])
+def update_receptionist(request, receptionist_id):
+    
+    try:
+        receptionist = Receptionist.objects.get(id=receptionist_id)
+        
+        # Fields to update
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        email = request.data.get('email')
+        phone = request.data.get('phone')
+        state = request.data.get('state')
+        
+        if first_name != receptionist.user.first_name:
+            receptionist.user.first_name = first_name
+            
+        if last_name != receptionist.user.last_name:
+            receptionist.user.last_name = last_name
+            
+        if email != receptionist.user.email:
+            receptionist.user.email = email
+        
+        if phone != receptionist.phone:
+            receptionist.phone = phone
+        
+        if state != receptionist.state:
+            receptionist.state = state
+        
+        receptionist.user.save()
+        receptionist.save()
+        
+        receptionist_serialized = receptionistSerializer(receptionist)
+        
+        return Response({"message": "Recepcionista actualizado", "receptionist": receptionist_serialized.data}, status=status.HTTP_200_OK)
+    
+    except Receptionist.DoesNotExist:
+        return Response({"error": "No se encontro un recepcionista"},status=status.HTTP_404_NOT_FOUND)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
 @api_view(["GET"]) 
 def appointments(request):
     print("Entrando a la vista")
