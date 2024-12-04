@@ -430,9 +430,9 @@ def create_appointment(request):
     
     final_time = start_time + duration_total
     
-    appointments = Appointment.objects.filter(employee=employee, date=new_date)
+    appointments = Appointment.objects.filter(employee=employee, date=new_date, estate="Pendiente")
     
-    if Appointment.objects.filter(date=new_date, employee=employee_id, time=time).exists():
+    if Appointment.objects.filter(date=new_date, employee=employee_id, time=time, estate="Pendiente").exists():
         return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
     
     day_date = " "
@@ -468,27 +468,42 @@ def create_appointment(request):
                 return Response({"error": "No es posible agendar una cita en un dia que no trabaja el artista"}, status=status.HTTP_400_BAD_REQUEST)
             
             if time_entry.double_day:
-                if time.time() < start_hour_t1 or time.time() >= end_hour_t2 or time.time() < start_hour_t2 and time.time() >= end_hour_t1:
-                    return Response({"error": "La cita no puede empezar antes o despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
-                    
-                if (final_time.time() > end_hour_t1 and final_time.time() <= start_hour_t2) or final_time.time() > end_hour_t2:
-                    return Response({"error": "La cita no puede empezar antes o despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+                if time.time() < start_hour_t1:
+                    return Response({"error": "La cita no puede empezar antes de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if time.time() >= end_hour_t2:
+                    return Response({"error": "La cita no puede empezar despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if time.time() >= end_hour_t1 and time.time() < start_hour_t2:
+                    return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+
     
     print("Validando disponibilidad de horario 2")
     
     for appointment in appointments:
         appointment_start_time = appointment.time
+        
         for service in appointment.services.all():
             services = EmployeeServices.objects.filter(employee=employee_id, service=service)
         duration_total = timedelta()
+        
         for service in services:
             duration_total = service.duration
+            
         appointment_end_time = (appointment.time + duration_total)
-        print(appointment_start_time.time(), appointment_end_time.time())
+        
         if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
             return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
+        
         if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
             return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        for time in times:
+            if final_time.time() >= time.time_end_day_two:
+                return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if final_time.time() >= time.time_end_day_one:
+                return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
         
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
