@@ -133,7 +133,7 @@ def reschedule(request):
         print("day_name", day_name)
         if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
             print("the employee does not work on this day")
-            return Response({"error": "The employee does not work on this day"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar horario laboral
         for time_entry in times:
@@ -148,12 +148,12 @@ def reschedule(request):
             if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
                (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
                 print("Appointment time is outside of working hours")
-                return Response({"error": "Appointment time is outside of working hours"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Cita fuera del horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
 
             if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
                (end_time.time() > end_hour_t2):
                 print("Appointment duration exceeds working hours")
-                return Response({"error": "Appointment duration exceeds working hours"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Duración de la cita excede el horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
         for existing_appointment in appointments:
