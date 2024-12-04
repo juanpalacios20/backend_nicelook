@@ -1,17 +1,19 @@
 from rest_framework import serializers
+
+from client.serializers import clientSerializer
 from .models import Product_payment
 from product.models import Product
 from rest_framework import serializers
 from .models import Product_payment
 from product.models import Product
 from productPaymentDetail.models import ProductPaymentDetail
-from productPaymentDetail.serializers import ProductPaymentDetailSerializer 
-
+from productPaymentDetail.serializers import ProductPaymentDetailSerializer
 class ProductQuantitySerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.FloatField()
 
 class ProductPaymentSerializer(serializers.ModelSerializer):
+    client = clientSerializer(read_only=True)
     products = ProductQuantitySerializer(many=True, write_only=True)
     total_price = serializers.ReadOnlyField()
     total_quantity = serializers.ReadOnlyField()
