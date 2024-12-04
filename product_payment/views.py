@@ -78,6 +78,7 @@ def create_product_payment_option2(request, establisment_id, client_id):
     #Este metodo es para meter todos los productos al carrito 1 por 1
     establisment = Establisment.objects.get(id=establisment_id)
     client = Client.objects.get(id=client_id)
+    print(client.user.first_name)
     product_code = request.data.get('code')
     print(product_code)
     print("hola")
@@ -125,9 +126,10 @@ def create_product_payment_option2(request, establisment_id, client_id):
             establisment=establisment,
             client=client,
             state = True, #al ser true significa que la compra está en modo carrito
-            method = " ",
+            method = "Efectivo",
             date = date
         )
+        print(client.user.first_name)
         discountt = 0
         product_pay = Product.objects.get(id=product_code)
         ProductPaymentDetail.objects.create(
@@ -203,7 +205,6 @@ def details (request):
                 image_base64 = base64.b64encode(image_binaria).decode('utf-8')
                 mime_type = "image/jpeg"
                 image_base64_url = f"data:{mime_type};base64,{image_base64}"
-            print(image_base64_url)
             discount = (d.product.price * (d.product.discount/100))
             data.append({
                 'name': d.product.name,
