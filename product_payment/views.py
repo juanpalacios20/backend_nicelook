@@ -429,7 +429,7 @@ def list_products(request, establisment_id):
                     contador += 1
                     rating += r.rating
                 rating = rating/contador
-            if product.quantity > 0:
+            if product.quantity > 0 and product.estate == True:
                 data.append({
                         "id": product.id,
                         "name": product.name,
