@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
+from employee_services.models import EmployeeServices
 from establisment.models import Establisment
 
 # Create your views here.
@@ -116,6 +117,10 @@ def update_service(request):
         if service_data["state"] == "true":
             service.state = True
         if service_data["state"] == "false":
+            if EmployeeServices.objects.filter(service=service).exists():
+                return Response(
+                    {"error": "No se puede desactivar un servicio que tiene empleados asignados."}, status=status.HTTP_400_BAD_REQUEST
+                )
             service.state = False
     
     if "image" in service_data:

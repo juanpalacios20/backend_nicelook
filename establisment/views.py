@@ -199,24 +199,24 @@ def get_filter_payments_service(request, establisment_id):
 @api_view(['GET'])
 def servicesByEstablisment(request, employee_id):
     try:
-        # Verificar si el establecimiento existe
+        # Verificar si el empleado existe
         employee = Employee.objects.get(id=employee_id)
-        # Obtener los servicios del establecimiento
-        
+        # Obtener los servicios del empleado
         employee_services = EmployeeServices.objects.filter(employee=employee)
         
-        services = Service.objects.exclude(id__in=[service.service.id for service in employee_services])
-
+        # Excluir los servicios del empleado y los servicios con estado en false
+        services = Service.objects.exclude(id__in=[service.service.id for service in employee_services]).filter(state=True)
+        
         # Serializar y devolver la respuesta
         serializer = serviceSerializer(services, many=True)
         return JsonResponse({
             'services': serializer.data
         }, status=200)
 
-    except Establisment.DoesNotExist:
-        return Response({"error": "Establishment not found."}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e: 
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+    except Employee.DoesNotExist:
+        return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def getInfoEstablisment(request):
@@ -461,7 +461,7 @@ def getInfoEmployee(request):
 def getEmployees(request):
     try:
         establisment = Establisment.objects.get(name="Stylo's Peluquería & Barbería")
-        employees = Employee.objects.filter(establisment=establisment)
+        employees = Employee.objects.filter(establisment=establisment, state=True)
         data = EmployeeSerializer(employees, many=True).data
         for employee in data:
             del employee['establisment']
