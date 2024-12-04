@@ -420,7 +420,9 @@ def getInfoEmployee(request):
                 rating += int(nota)
                 count += 1
             # Calcular el promedio de calificaciones
-            employe_data['rating'] = rating / count if count > 0 else 0
+            promedio = rating / count
+            employe_data['rating'] = round(promedio, 1)
+            print(employe_data['rating'])
             employe_data['reviews'] = count
 
             # Obtener la imagen del empleado
@@ -479,13 +481,15 @@ def getEmployees(request):
             if reviews:
                 data_review = reviewEmployeeSerializer(reviews, many=True).data
                 rating = 0
-                count = 1
+                count = 0
                 for review in data_review:
                     nota = review['rating']
-                    rating = int(nota)/ count
+                    rating += int(nota)
                     count += 1
-                employee['rating'] = rating
-                employee['reviews'] = count - 1
+                promedio = rating / count
+                employee['rating'] = round(promedio, 1)
+                employee['reviews'] = count
+                print(employee['rating'])
             image = EmployeeImage.objects.filter(establishment_id=establisment.id, employee_id=employee['id']).first()
             if image:
                 imageBase64 = base64.b64encode(image.image).decode('utf-8')
