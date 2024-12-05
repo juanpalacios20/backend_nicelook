@@ -797,17 +797,22 @@ def client_cancel_appointment(request):
         # Busca la cita
         appointment = Appointment.objects.get(id=id_appointment)
         
-        # Obtén la fecha y hora actual
+        # Configurar la zona horaria de Colombia
         colombia_tz = pytz.timezone('America/Bogota')
-        actual_datetime = datetime.now(colombia_tz)
-        print(actual_datetime)
         
-        # Asegúrate de que `appointment.date` sea un objeto datetime
-        if isinstance(appointment.time, datetime):
-            appointment_datetime = appointment.time
+        # Obtener la hora actual con zona horaria
+        actual_datetime = datetime.now(colombia_tz)
+        print(f"Hora actual en Colombia: {actual_datetime}")
+        
+        # Asegúrate de que `appointment.time` sea timezone-aware
+        if appointment.time.tzinfo is None:
+            # Si no tiene zona horaria, la añadimos
+            appointment_datetime = colombia_tz.localize(appointment.time)
         else:
-            # Si no es un datetime, conviértelo (esto depende de cómo almacenes la fecha)
-            return Response({'error': 'El campo date de la cita debe ser un datetime.'}, status=400)
+            # Si ya tiene zona horaria, lo usamos directamente
+            appointment_datetime = appointment.time
+        
+        print(f"Hora de la cita: {appointment_datetime}")
         
         # Verifica si faltan más de 1 hora
         if appointment_datetime - actual_datetime <= timedelta(hours=1):
