@@ -3,6 +3,8 @@ import requests
 from django.shortcuts import get_object_or_404, render
 import requests
 from rest_framework import viewsets,status
+from datetime import datetime
+import pytz
 
 from client.models import Client
 from establisment.models import Establisment
@@ -796,7 +798,8 @@ def client_cancel_appointment(request):
         appointment = Appointment.objects.get(id=id_appointment)
         
         # Obtén la fecha y hora actual
-        actual_datetime = datetime.now()
+        colombia_tz = pytz.timezone('America/Bogota')
+        actual_datetime = datetime.now(colombia_tz)
         print(actual_datetime)
         
         # Asegúrate de que `appointment.date` sea un objeto datetime
