@@ -3,6 +3,8 @@ import requests
 from django.shortcuts import get_object_or_404, render
 import requests
 from rest_framework import viewsets,status
+from datetime import datetime
+import pytz
 
 from client.models import Client
 from establisment.models import Establisment
@@ -148,12 +150,12 @@ def reschedule(request):
             if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
                (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
                 print("Appointment time is outside of working hours")
-                return Response({"error": "Cita fuera del horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
             if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
                (end_time.time() > end_hour_t2):
                 print("Appointment duration exceeds working hours")
-                return Response({"error": "Duración de la cita excede el horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Duración de la cita excede el horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
         for existing_appointment in appointments:
@@ -164,7 +166,7 @@ def reschedule(request):
 
             if (new_time >= existing_start_time and new_time < existing_end_time) or \
                (end_time > existing_start_time and end_time <= existing_end_time):
-                return Response({"error": "New appointment time conflicts with an existing appointment"},
+                return Response({"error": "Conflicto con otra cita ya programada"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
         # Actualizar la cita
@@ -791,4 +793,62 @@ def cancel_google_calendar_event(appointment, user):
         send_mail(subject, message, settings.EMAIL_HOST_USER , recipients)
     except Exception as e:
         print(f"Error al cancelar el evento {appointment.event_id}: {e}")
+
+@api_view(['PATCH'])
+def client_cancel_appointment(request):
+    try:
+        # Obtén el ID de la cita del cuerpo de la solicitud
+        id_appointment = request.data.get('id_appointment')
+        if not id_appointment:
+            return Response({'error': 'El ID de la cita es requerido.'}, status=400)
+        
+        # Busca la cita
+        appointment = Appointment.objects.get(id=id_appointment)
+        
+        # Configurar la zona horaria de Colombia
+        colombia_tz = pytz.timezone('America/Bogota')
+        
+        # Obtener la hora actual con zona horaria
+        actual_datetime = datetime.now(colombia_tz)
+        print(f"Hora actual en Colombia: {actual_datetime}")
+        
+        # Asegúrate de que `appointment.time` sea timezone-aware
+        if appointment.time.tzinfo is None:
+            # Si no tiene zona horaria, la añadimos
+            appointment_datetime = colombia_tz.localize(appointment.time)
+        else:
+            # Si ya tiene zona horaria, lo usamos directamente
+            appointment_datetime = appointment.time
+        
+        print(f"Hora de la cita: {appointment_datetime}")
+        
+        # Verifica si faltan más de 1 hora
+        if appointment_datetime - actual_datetime <= timedelta(hours=1):
+            return Response({'error': 'No puedes cancelar una cita con menos de 1 hora de anticipación.'}, status=400)
+        
+        # Cambia el estado de la cita y guarda
+        appointment.estate = "Cancelada"
+        appointment.save()
+        
+        # Llama a la función para cancelar en Google Calendar
+        cancel_google_calendar_event(appointment, appointment.employee)
+        
+        return Response({'message': 'Cita cancelada exitosamente.'}, status=200)
+    
+    except Appointment.DoesNotExist:
+        return Response({'error': 'La cita no existe.'}, status=404)
+    except Exception as e:
+        return Response({'error': f'Error interno: {str(e)}'}, status=500)
+    
+
+@api_view(['GET'])
+def get_appointments_pending(rquest, client_id):
+    try:
+        client = Client.objects.get(id=client_id)
+        appointments = Appointment.objects.filter(client=client, estate="Pendiente")
+        serializer = appointmentSerializer(appointments, many=True)
+        return Response({'appointments': serializer.data}, status=200)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+    
         

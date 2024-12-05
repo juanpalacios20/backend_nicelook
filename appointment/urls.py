@@ -15,4 +15,6 @@ urlpatterns = [
     path('availability/<int:employee_id>/', views.check_availability),
     path('create_appointment/', views.create_appointment),
     path('cancel_day/', views.cancel_appointments_day),
+    path('client_cancel_appointment/', views.client_cancel_appointment),
+    path('client_appointments_pending/<int:client_id>/', views.get_appointments_pending),
 ]
