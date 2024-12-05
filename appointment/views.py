@@ -783,4 +783,21 @@ def cancel_google_calendar_event(appointment, user):
         send_mail(subject, message, settings.EMAIL_HOST_USER , recipients)
     except Exception as e:
         print(f"Error al cancelar el evento {appointment.event_id}: {e}")
+
+@api_view(['PATCH'])
+def client_cancel_appointment(request):
+    try:
+        id_appointment = request.data.get('id_appointment')
+        appointment = Appointment.objects.get(id=id_appointment)
+        actual_date = datetime.now().date()
+        if appointment.date - actual_date  > timedelta(hours=1):
+            return Response({'error': 'No puedes cancelar una cita con menos de 1 hora de anticipación.'}, status=400)
+        appointment.estate = "Cancelada"
+        appointment.save()
+        
+        cancel_google_calendar_event(appointment, appointment.employee)
+        
+        return Response({'message': 'Cita cancelada exitosamente.'}, status=200)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
         
