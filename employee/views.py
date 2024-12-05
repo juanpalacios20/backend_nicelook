@@ -629,7 +629,8 @@ def history_appointments(request, employee_id):
                 services.append({
                     'name': service.name,
                 })
-            total_earnings += total
+            if appointment.estate == "Completada":
+                total_earnings += total
             info_appoiments.append({
                 'id': appointment.id,
                 'time': appointment.time.strftime("%H:%M"),
