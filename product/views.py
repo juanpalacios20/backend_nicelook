@@ -30,19 +30,19 @@ def addProduct(request):
         code = request.data.get('code')
         purchase_price = request.data.get('purchase_price')
         estate = True
+
+        if price <= 0 or code <= 0 or quantity <= 0 or purchase_price <= 0 or price <= 0:
+            return Response({'error': 'Datos deben ser mayores a 0'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not name or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         if not description:
             description = ''
         if Product.objects.filter(code=code).exists():
-            return Response({'error': 'Code already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'codigo ya existe'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not description:
             description = ''
-        
-        if Product.objects.filter(code=code).exists():
-            return Response({'error': 'Code already exists'}, status=status.HTTP_400_BAD_REQUEST)
         
         Product.objects.create(name=name,code=code,
                                description=description, 
@@ -92,8 +92,10 @@ def updateProduct(request):
             product.name = name
         if description:
             product.description = description
-        if price:
+        if price and price > 0:
             product.price = price
+        else:
+            return Response({'error': 'Precio debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)
         if brand:
             product.brand = brand
         if distributor:
@@ -102,18 +104,24 @@ def updateProduct(request):
             product.entry_date = entry_date
         if expiration_date:
             product.expiration_date = expiration_date
-        if quantity:
+        if quantity and quantity > 0:
             product.quantity = quantity
+        else:
+            return Response({'error': 'Qantidad debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)    
         if not estate:
             product.estate = estate
         else:
             product.estate = True
-        if code:
+        if code and code > 0 and not Product.objects.filter(code=code).exists():
             product.code = code
+        else:
+            return Response({'error': 'Code debe ser mayor a 0 y no debe existir'}, status=status.HTTP_400_BAD_REQUEST)
         if discount:
             product.discount = discount
-        if purchase_price:
+        if purchase_price and purchase_price > 0:
             product.purchase_price = purchase_price
+        else:
+            return Response({'error': 'Precio de compra debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)
         product.save()
         return Response({'message': 'Product updated successfully'}, status=status.HTTP_200_OK)
     except Exception as e:
