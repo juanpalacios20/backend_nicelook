@@ -190,11 +190,15 @@ def agregate_product(request, payment_id):
 
 @csrf_exempt
 @api_view(['GET'])
-def details (request):
+def details (request, client_id):
     #Este metodo es para ver los detalles de la compra
     try:
+        if not client_id:
+            return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
+        client = Client.objects.get(id=client_id)
+        
         data = []
-        payment = Product_payment.objects.filter(state=True).first()
+        payment = Product_payment.objects.filter(state=True, client=client).first()
         details = ProductPaymentDetail.objects.filter(payment=payment)
         for d in details:
             image = ImageProduct.objects.filter(id_product=d.product).first()
@@ -226,10 +230,13 @@ def details (request):
     
 @csrf_exempt
 @api_view(['DELETE'])
-def cancel_payment(request):
+def cancel_payment(request, client_id):
     #Este metodo es para cancelar la compra
     try:
-        payment = Product_payment.objects.filter(state=True).first()
+        if not client_id:
+            return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
+        client = Client.objects.get(id=client_id)
+        payment = Product_payment.objects.filter(state=True, client=client).first()
         print("hola")
         detail = ProductPaymentDetail.objects.filter(payment=payment)
         for d in detail:
@@ -246,10 +253,13 @@ def cancel_payment(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @api_view(['DELETE'])
-def  delete_product_of_payment(request):
+def  delete_product_of_payment(request, client_id):
     #Este metodo es para eliminar un producto (cantidad) de la compra
     try:
-        payment = Product_payment.objects.filter(state=True).first()
+        if not client_id:
+            return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
+        client = Client.objects.get(id=client_id)
+        payment = Product_payment.objects.filter(state=True, client=client).first()
         data = request.data
         product_code = data.get('code')
         if not payment:
@@ -279,7 +289,11 @@ def  delete_product_of_payment(request):
 def complete_payment(request):
     #Este metodo es para completar la compra y enviar la factura con los detalles
     try:
-        payment = Product_payment.objects.filter(state=True).first()
+        client_id = request.data.get('client_id')
+        if not client_id:
+            return JsonResponse({'error': 'No se proporcionó el ID del cliente'}, status=400)
+        client = Client.objects.get(id=client_id)
+        payment = Product_payment.objects.filter(state=True, client=client).first()
         payment.state = False
         payment.save()
         product = payment.products.all()
@@ -460,13 +474,16 @@ def list_products(request, establisment_id):
         )
         
 @api_view(["DELETE"])
-def delete_product(request, code):
+def delete_product(request, code, client_id):
     try:
+        if not client_id:
+            return Response({'error': 'No se proporciono el ID del cliente'}, status=status.HTTP_400_BAD_REQUEST)
+        client = Client.objects.get(id=client_id)
         # Busca el producto dinámicamente con el ID proporcionado
         product = Product.objects.get(code=code)
         
         # Encuentra pagos asociados al producto
-        payments = Product_payment.objects.filter(products=product, state=True)
+        payments = Product_payment.objects.filter(products=product, state=True, client=client)
         
         # Valida si hay detalles de pagos asociados
         details = ProductPaymentDetail.objects.filter(payment__in=payments, product=product).first()
