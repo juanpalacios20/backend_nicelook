@@ -748,6 +748,8 @@ class EmployeeLogin(APIView):
         
         employee = Employee.objects.filter(user=user).first()
         if employee:
+            if employee.state == False:
+                return Response({'error': 'No estas activo/a en la lista de profesionales del establecimiento'}, status=status.HTTP_400_BAD_REQUEST)
             employee.token = refresh_token
             employee.accestoken = access_token
             employee.googleid = google_id
@@ -774,6 +776,8 @@ class EmployeeLogin(APIView):
         
         receptionist = Receptionist.objects.filter(user=user).first()
         if receptionist:
+            if receptionist.state == False:
+                return Response({'error': 'No estas activo/a en la lista de profesionales del establecimiento'}, status=status.HTTP_400_BAD_REQUEST)
             receptionist.token = refresh_token
             receptionist.accestoken = access_token
             receptionist.googleid = google_id
@@ -795,8 +799,9 @@ class EmployeeLogin(APIView):
                 'last_name': user.last_name,
                 'establishment_id': receptionist.establisment.id,
                 'id_receptionist': receptionist.id,
-                'isArtist': False
+                'isArtist': False,
             }, status=status.HTTP_200_OK)
+        
         if not receptionist and not employee:
-            return Response({'error': 'Receptionist and Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'No te hemos encontrado en la lista de profesionales de el establecimiento, contacta con ellos para resolver el problema'}, status=status.HTTP_404_NOT_FOUND)
        

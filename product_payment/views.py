@@ -405,7 +405,7 @@ def filter_products(request, establisment_id):
 def list_products(request, establisment_id):
     try: 
         establisment = Establisment.objects.get(id=establisment_id)
-        products = Product.objects.filter(establisment=establisment)[:4]
+        products = Product.objects.filter(establisment=establisment, estate=True)[:8]
             
         for p in products:
             if p.quantity == 0:
