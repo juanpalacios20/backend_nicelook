@@ -230,10 +230,9 @@ def details (request, client_id):
     
 @csrf_exempt
 @api_view(['DELETE'])
-def cancel_payment(request):
+def cancel_payment(request, client_id):
     #Este metodo es para cancelar la compra
     try:
-        client_id = request.data.get('client_id')
         if not client_id:
             return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
         client = Client.objects.get(id=client_id)
@@ -254,10 +253,9 @@ def cancel_payment(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @api_view(['DELETE'])
-def  delete_product_of_payment(request):
+def  delete_product_of_payment(request, client_id):
     #Este metodo es para eliminar un producto (cantidad) de la compra
     try:
-        client_id = request.data.get('client_id')
         if not client_id:
             return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
         client = Client.objects.get(id=client_id)
