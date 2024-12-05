@@ -797,6 +797,7 @@ def client_cancel_appointment(request):
         
         # Obtén la fecha y hora actual
         actual_datetime = datetime.now()
+        print(actual_datetime)
         
         # Asegúrate de que `appointment.date` sea un objeto datetime
         if isinstance(appointment.date, datetime):
