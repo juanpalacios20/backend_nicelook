@@ -800,8 +800,8 @@ def client_cancel_appointment(request):
         print(actual_datetime)
         
         # Asegúrate de que `appointment.date` sea un objeto datetime
-        if isinstance(appointment.date, datetime):
-            appointment_datetime = appointment.date
+        if isinstance(appointment.time, datetime):
+            appointment_datetime = appointment.time
         else:
             # Si no es un datetime, conviértelo (esto depende de cómo almacenes la fecha)
             return Response({'error': 'El campo date de la cita debe ser un datetime.'}, status=400)
