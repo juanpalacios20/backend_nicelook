@@ -560,11 +560,11 @@ def create_appointment(request):
         if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
             return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
         
-        for time in times:
-            if final_time.time() >= time.time_end_day_two:
+        for time1 in times:
+            if final_time.time() >= time1.time_end_day_two:
                 return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
             
-            if final_time.time() >= time.time_end_day_one:
+            if final_time.time() >= time1.time_end_day_one:
                 return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
         
     if not employee.token:
@@ -589,6 +589,14 @@ def create_appointment(request):
     end_date = "2024-11-20"
     
     try:
+        print("Creando cita")
+        print("Datos")
+        print("Cliente", client)
+        print("Empleado", employee)
+        print("Fecha", new_date)
+        print("Hora", time)
+        print("Establecimiento", establishment)
+        print("Estado", "Pendiente")
         appointment = Appointment.objects.create(
             client=client,
             employee=employee,
@@ -598,7 +606,7 @@ def create_appointment(request):
             estate='Pendiente',
             method='Efectivo',
         )
-        
+        print("Cita creada", appointment)
     except Exception as e:
         return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
     
