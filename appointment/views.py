@@ -148,12 +148,12 @@ def reschedule(request):
             if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
                (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
                 print("Appointment time is outside of working hours")
-                return Response({"error": "Cita fuera del horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
             if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
                (end_time.time() > end_hour_t2):
                 print("Appointment duration exceeds working hours")
-                return Response({"error": "Duración de la cita excede el horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Duración de la cita excede el horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
         for existing_appointment in appointments:
@@ -164,7 +164,7 @@ def reschedule(request):
 
             if (new_time >= existing_start_time and new_time < existing_end_time) or \
                (end_time > existing_start_time and end_time <= existing_end_time):
-                return Response({"error": "New appointment time conflicts with an existing appointment"},
+                return Response({"error": "Conflicto con otra cita ya programada"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
         # Actualizar la cita
