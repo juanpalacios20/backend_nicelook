@@ -629,6 +629,8 @@ def history_appointments(request, employee_id):
                 services.append({
                     'name': service.name,
                 })
+            if appointment.state == "Completada":
+                total = 0
             total_earnings += total
             info_appoiments.append({
                 'id': appointment.id,
