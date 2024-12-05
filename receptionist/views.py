@@ -130,7 +130,7 @@ def products_sold(request):
                 
 
         print("Serializando")
-        payments_product = Product_payment.objects.filter(date__month=month ,establisment=id_establisment)
+        payments_product = Product_payment.objects.filter(date=payment_product_date ,establisment=id_establisment)
         if not payment_product:
             return Response({'status': 'No se encontraron ventas en el dia'}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProductPaymentSerializer(payments_product, many=True)
