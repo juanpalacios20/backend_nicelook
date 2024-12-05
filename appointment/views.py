@@ -787,23 +787,45 @@ def cancel_google_calendar_event(appointment, user):
 @api_view(['PATCH'])
 def client_cancel_appointment(request):
     try:
+        # Obtén el ID de la cita del cuerpo de la solicitud
         id_appointment = request.data.get('id_appointment')
+        if not id_appointment:
+            return Response({'error': 'El ID de la cita es requerido.'}, status=400)
+        
+        # Busca la cita
         appointment = Appointment.objects.get(id=id_appointment)
-        actual_date = datetime.now().date()
-        if appointment.date - actual_date  > timedelta(hours=1):
+        
+        # Obtén la fecha y hora actual
+        actual_datetime = datetime.now()
+        
+        # Asegúrate de que `appointment.date` sea un objeto datetime
+        if isinstance(appointment.date, datetime):
+            appointment_datetime = appointment.date
+        else:
+            # Si no es un datetime, conviértelo (esto depende de cómo almacenes la fecha)
+            return Response({'error': 'El campo date de la cita debe ser un datetime.'}, status=400)
+        
+        # Verifica si faltan más de 1 hora
+        if appointment_datetime - actual_datetime <= timedelta(hours=1):
             return Response({'error': 'No puedes cancelar una cita con menos de 1 hora de anticipación.'}, status=400)
+        
+        # Cambia el estado de la cita y guarda
         appointment.estate = "Cancelada"
         appointment.save()
         
+        # Llama a la función para cancelar en Google Calendar
         cancel_google_calendar_event(appointment, appointment.employee)
         
         return Response({'message': 'Cita cancelada exitosamente.'}, status=200)
+    
+    except Appointment.DoesNotExist:
+        return Response({'error': 'La cita no existe.'}, status=404)
     except Exception as e:
-        return Response({'error': str(e)}, status=400)
+        return Response({'error': f'Error interno: {str(e)}'}, status=500)
     
 
 @api_view(['GET'])
-def get_appointments_pending(client_id):
+def get_appointments_pending(rquest, client_id):
     try:
         client = Client.objects.get(id=client_id)
         appointments = Appointment.objects.filter(client=client, estate="Pendiente")
