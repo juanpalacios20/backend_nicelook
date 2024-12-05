@@ -73,6 +73,11 @@ def appointment_list(request):
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime, timedelta, date
+
 @api_view(['PATCH'])
 def reschedule(request):
     try:
@@ -81,50 +86,107 @@ def reschedule(request):
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
-        time_str = request.data.get('time')
-
-        if not id_appointment or not day or not month or not year or not time_str:
+        time = request.data.get('time')
+        if not all([id_appointment, year, month, day, time]):
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Convertir tiempo
-        time = datetime(year=int(year), month=int(month), day=int(day),
-                        hour=int(time_str.split(':')[0]), minute=int(time_str.split(':')[1]))
+        # Construir fecha y hora de la nueva cita
+        new_date = date(year=int(year), month=int(month), day=int(day))
+        new_time = datetime(year=int(year), month=int(month), day=int(day),
+                            hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
+        
+        day_name = new_date.strftime('%a')
+        if new_date.weekday() == 0:
+            day_name = "Lun"
+        elif new_date.weekday() == 1:
+            day_name = "Mar"
+        elif new_date.weekday() == 2:
+            day_name = "Mie"
+        elif new_date.weekday() == 3:
+            day_name = "Jue"
+        elif new_date.weekday() == 4:
+            day_name = "Vie"
+        elif new_date.weekday() == 5:
+            day_name = "Sab"
+        elif new_date.weekday() == 6:
+            day_name = "Dom"
 
         # Obtener la cita existente
-        appointment = Appointment.objects.get(id=id_appointment)
+        try:
+            appointment = Appointment.objects.get(id=id_appointment)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Validar disponibilidad y estado de la cita
-        new_date = date(year=int(year), month=int(month), day=int(day))
-        if Appointment.objects.filter(date=new_date, establisment=appointment.establisment, 
-                                       employee=appointment.employee, time=time).exists():
-            return Response({"error": "appointment date not available"}, status=status.HTTP_400_BAD_REQUEST)
+        employee = appointment.employee
+        times = Time.objects.filter(employee=employee)
+        appointments = Appointment.objects.filter(employee=employee, date=new_date).exclude(id=id_appointment)
 
-        if appointment.estate in ["Completada"]:
-            return Response({"error": "appointment completed"}, status=status.HTTP_400_BAD_REQUEST)
+        # Verificar duración total de los servicios
+        services = appointment.services.all()
+        total_duration = sum([EmployeeServices.objects.get(employee=employee, service=service).duration for service in services], timedelta())
 
-        # Actualizar fecha y hora en la base de datos
+        end_time = new_time + total_duration
+
+
+        # Validar día laboral
+        
+        print("day_name", day_name)
+        if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
+            print("the employee does not work on this day")
+            return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar horario laboral
+        for time_entry in times:
+            start_hour_t1 = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
+            end_hour_t1 = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
+            if time_entry.time_start_day_two and time_entry.time_end_day_two:
+                start_hour_t2 = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
+                end_hour_t2 = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
+            else:
+                start_hour_t2 = end_hour_t2 = None
+
+            if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
+               (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
+                print("Appointment time is outside of working hours")
+                return Response({"error": "Cita fuera del horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
+               (end_time.time() > end_hour_t2):
+                print("Appointment duration exceeds working hours")
+                return Response({"error": "Duración de la cita excede el horario de trabajo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar conflictos con otras citas
+        for existing_appointment in appointments:
+            existing_start_time = existing_appointment.time
+            existing_duration = sum([EmployeeServices.objects.get(employee=employee, service=service).duration
+                                     for service in existing_appointment.services.all()], timedelta())
+            existing_end_time = existing_start_time + existing_duration
+
+            if (new_time >= existing_start_time and new_time < existing_end_time) or \
+               (end_time > existing_start_time and end_time <= existing_end_time):
+                return Response({"error": "New appointment time conflicts with an existing appointment"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar la cita
         appointment.date = new_date
-        appointment.time = time
-       
+        appointment.time = new_time
         appointment.save()
 
-        refresh_access_token(appointment.employee.token, appointment.employee.id)
+        # Enviar notificaciones y actualizar en Google Calendar
+        refresh_access_token(employee.token, employee.id)
+        update_google_calendar(appointment, new_time)
 
-        # Reagendar en Google Calendar
-        update_google_calendar(appointment, time)
-
-
-
-        # Enviar correos de notificación
         send_email_notification(appointment)
 
-        return Response({"success": "Appointment rescheduled"}, status=status.HTTP_200_OK)
-
-    except Appointment.DoesNotExist:
-        return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response({"success": "Appointment rescheduled successfully"}, status=status.HTTP_200_OK)
+    
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except ConnectionResetError:
+        print("Client disconnected unexpectedly")
+        return Response({"error": "Client disconnected unexpectedly"}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 def update_google_calendar( appointment, time):
     """
