@@ -474,9 +474,8 @@ def list_products(request, establisment_id):
         )
         
 @api_view(["DELETE"])
-def delete_product(request, code):
+def delete_product(request, code, client_id):
     try:
-        client_id = request.data.get(client_id)
         if not client_id:
             return Response({'error': 'No se proporciono el ID del cliente'}, status=status.HTTP_400_BAD_REQUEST)
         client = Client.objects.get(id=client_id)
