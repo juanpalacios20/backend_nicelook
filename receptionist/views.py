@@ -111,14 +111,14 @@ def products_sold(request):
         year = int(request.query_params.get('year'))
         ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         total_ventas_dia= 0 
-
+ 
         print("Datos obtenidos", id_establisment, day, month, year)
         payment_product_date = date(year, month, day) 
-        payments_product = Product_payment.objects.filter(date__month=month ,establisment=id_establisment)
-        if not payments_product:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+        payment_product = Product_payment.objects.filter(date__month=month ,establisment=id_establisment)
+        if not payment_product:
+            return Response({'status': 'No se encontraron ventas en el mes'}, status=status.HTTP_404_NOT_FOUND)
         print("Calculando el total de ventas")
-        for payment in payments_product:
+        for payment in payment_product:
             print("entré")
             total = payment.total_price
             print (total)
@@ -130,6 +130,9 @@ def products_sold(request):
                 
 
         print("Serializando")
+        payments_product = Product_payment.objects.filter(date__month=month ,establisment=id_establisment)
+        if not payment_product:
+            return Response({'status': 'No se encontraron ventas en el dia'}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProductPaymentSerializer(payments_product, many=True)
         print(serializer.data)
         print("Enviando respuesta") 
