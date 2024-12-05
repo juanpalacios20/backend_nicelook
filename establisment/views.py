@@ -277,6 +277,7 @@ def getInfoEstablisment(request):
 @api_view(['GET'])
 def getAvailableEmployees(request, id_employee):
     try:
+        print("tin")
         # Obtener parámetros de la consulta
         year = int(request.query_params.get('year'))
         month = int(request.query_params.get('month'))
@@ -287,11 +288,33 @@ def getAvailableEmployees(request, id_employee):
         employee = Employee.objects.get(id=id_employee)
         time_ranges = Time.objects.filter(employee=employee)
         appointments = Appointment.objects.filter(date=new_date, employee=employee, estate__icontains='Pendiente').order_by('time')
-
         disponibilidad = []
 
+        if not time_ranges:
+            return Response({"error": "No se encontraron horarios para el empleado"}, status=status.HTTP_400_BAD_REQUEST)
         # Calcular disponibilidad para cada rango de tiempo
+        day_date = " "
+        if new_date.weekday() == 0:
+            day_date = "Lun"
+        elif new_date.weekday() == 1:
+            day_date = "Mar"
+        elif new_date.weekday() == 2:
+            day_date = "Mie"
+        elif new_date.weekday() == 3:
+            day_date = "Jue"
+        elif new_date.weekday() == 4:
+            day_date = "Vie"
+        elif new_date.weekday() == 5:
+            day_date = "Sab"
+        elif new_date.weekday() == 6:
+            day_date = "Dom"
+        print("day_date", day_date)
         for time_range in time_ranges:
+            print("entré")
+            print(time_range.working_days)
+            print(day_date.lower())
+            if day_date.lower() not in [d.lower() for d in time_range.working_days]:
+                return Response({"error": "El artista no trabaja ese dia"}, status=status.HTTP_400_BAD_REQUEST)   
             start_time = time_range.time_start_day_one
             end_time = time_range.time_end_day_one
             if time_range.time_start_day_two and time_range.time_end_day_two:
