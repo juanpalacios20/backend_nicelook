@@ -109,24 +109,36 @@ def products_sold(request):
         day = int(request.query_params.get('day'))
         month = int(request.query_params.get('month'))
         year = int(request.query_params.get('year'))
+        ganancias_meses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        total_ventas_dia= 0 
 
         print("Datos obtenidos", id_establisment, day, month, year)
         payment_product_date = date(year, month, day) 
-        payments_product = Product_payment.objects.filter(date=payment_product_date, establisment=id_establisment)
+        payments_product = Product_payment.objects.filter(date__month=month ,establisment=id_establisment)
         if not payments_product:
             return Response(status=status.HTTP_404_NOT_FOUND)
         print("Calculando el total de ventas")
-        total_ventas= 0 
         for payment in payments_product:
-            total_ventas += payment.total()
+            print("entré")
+            total = payment.total_price
+            print (total)
+            if payment.date == payment_product_date:
+                total_ventas_dia += total
+                print("ostras")
+            print ("tan")
+            ganancias_meses[int(payment.date.month - 1)] += payment.total_price
+                
 
         print("Serializando")
         serializer = ProductPaymentSerializer(payments_product, many=True)
         print(serializer.data)
         print("Enviando respuesta") 
-        return Response({"products": serializer.data, 'total': total_ventas}, status=status.HTTP_200_OK)
-    except:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response({'products': serializer.data, 
+                         'total': total_ventas_dia,
+                         'ganancias_meses': ganancias_meses[int(month)-1]}, 
+                        status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["POST"]) 
 def create_appoinment(request):
