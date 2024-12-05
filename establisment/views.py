@@ -240,13 +240,14 @@ def getInfoEstablisment(request):
         if reviews.count() != 0:
             reviewsSerializer = reviewSerializer(reviews, many=True)
             rating = 0
-            count = 1
+            count = 0
             for review in reviewsSerializer.data:
                 nota = review['rating']
-                rating = int(nota)/ count
+                rating += int(nota)
                 count += 1
+            rating = round(rating / count, 2)
             information_establishment['rating'] = rating
-            information_establishment['reviews'] = count - 1
+            information_establishment['reviews'] = count
         
        
         #obtener imagenes del establecimiento
