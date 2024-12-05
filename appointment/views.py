@@ -800,4 +800,16 @@ def client_cancel_appointment(request):
         return Response({'message': 'Cita cancelada exitosamente.'}, status=200)
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+    
+
+@api_view(['GET'])
+def get_appointments_pending(client_id):
+    try:
+        client = Client.objects.get(id=client_id)
+        appointments = Appointment.objects.filter(client=client, estate="Pendiente")
+        serializer = appointmentSerializer(appointments, many=True)
+        return Response({'appointments': serializer.data}, status=200)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+    
         
