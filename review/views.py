@@ -48,7 +48,7 @@ def get_reviews(request, establisment_id):
         establisment = Establisment.objects.get(id=establisment_id)
         reviews = Review.objects.filter(establisment=establisment)
         serializer = reviewSerializer(reviews, many=True)
-        return Response(serializer.data)
+        return Response({"reviews": serializer.data}, status=status.HTTP_200_OK)
     
     except Establisment.DoesNotExist:
         return Response({'error': 'El Establecimiento no ha sido encontrado'}, status=status.HTTP_404_NOT_FOUND)
