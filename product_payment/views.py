@@ -193,7 +193,7 @@ def agregate_product(request, payment_id):
 def details (request):
     #Este metodo es para ver los detalles de la compra
     try:
-        client_id = request.data.get('client_id')
+        client_id = request.query_params.get('client_id')
         if not client_id:
             return JsonResponse({'error': 'No se proporciono el ID del cliente'}, status=400)
         client = Client.objects.get(id=client_id)
