@@ -31,9 +31,6 @@ def addProduct(request):
         purchase_price = request.data.get('purchase_price')
         estate = True
 
-        if price <= 0 or code <= 0 or quantity <= 0 or purchase_price <= 0 or price <= 0:
-            return Response({'error': 'Datos deben ser mayores a 0'}, status=status.HTTP_400_BAD_REQUEST)
-        
         if not name or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
             return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
         if not description:
