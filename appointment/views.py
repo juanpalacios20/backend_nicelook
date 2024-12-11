@@ -363,7 +363,7 @@ def generate_time_slots(start_time, end_time, slot_duration=timedelta(minutes=60
 
 def get_available_times(employee_id, date):
     # Filtra los registros de tiempo del empleado y verifica el estado
-    time_entries = Time.objects.filter(employee_id=employee_id, state=True)
+    time_entries = Time.objects.filter(employee_id=employee_id)
     available_slots = []
 
     for entry in time_entries:
