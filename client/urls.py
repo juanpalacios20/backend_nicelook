@@ -12,5 +12,7 @@ urlpatterns = [
     path('get_client/<int:client_id>/', views.get_client),
     path('update_client/<int:client_id>/', views.update_client),
     path('login/', views.ClientLoginView.as_view()),
-    path('client_product_purchases/<int:client_id>/', views.client_product_purchases)
+    path('client_product_purchases/<int:client_id>/', views.client_product_purchases),
+    path('client_login/', views.loginClient),
+    path('client_signup/', views.registerClient),
 ]
