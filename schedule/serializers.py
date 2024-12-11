@@ -4,7 +4,7 @@ from .models import TimeException
         
 class timeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Time
+        model = Time 
         fields = '__all__'
         
 class timeExceptionSerializer(serializers.ModelSerializer):
