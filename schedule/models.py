@@ -11,7 +11,8 @@ class Time (models.Model):
     time_end_day_two = models.TimeField(null=True)
     double_day = models.BooleanField()
     state = models.BooleanField()
-    working_days = ArrayField(models.CharField(max_length=10), blank=True, null=True)
+    date_start = models.DateField()
+    date_end = models.DateField()
     
     
     def __str__(self):
