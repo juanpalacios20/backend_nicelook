@@ -15,8 +15,37 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path, include
+import client
+import client.urls
+
+import product_payment
+from .social_auth_views import GoogleLogin
+import service.urls
+from . import views
+import service
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('image/', include('image.urls')),
+    path('establisment/', include('establisment.urls')),
+    path('api/', include('appointment.urls')),
+    path('employee/', include('employee.urls')),
+    path('category/', include('category.urls')),
+    path('Product/', include('product.urls')),#endpoints de productos
+    path('Product/', include('Image_product.urls')),#endpoints de imagenes
+    path('api/', include(service.urls)),
+    path('auth/', include('dj_rest_auth.urls')),  # Endpoints de autenticación
+    path('auth/google/', GoogleLogin.as_view(), name='google_login'), # Para el registro
+    path('accounts/', include('allauth.urls')),  # Para las rutas de allauth
+    path('employee_services/', include('employee_services.urls')), 
+    path('receptionist/', include('receptionist.urls')),
+    path('review_employee/', include('review_employee.urls')),
+    path('client/', include('client.urls')),
+    path('service/', include('service.urls')),
+    path('administrator/', include('administrator.urls')),#endpoints de administrador
+    path('receptionist/', include('receptionist.urls')), #endpoints de recepcionista
+    path('client/', include(client.urls)),
+    path('api/', include('product_payment.urls')),
+    path('reviews_establisment/', include('review.urls')),
 ]
