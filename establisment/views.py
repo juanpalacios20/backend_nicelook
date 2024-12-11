@@ -312,10 +312,10 @@ def getAvailableEmployees(request, id_employee):
         print("day_date", day_date)
         for time_range in time_ranges:
             print("entré")
-            print(time_range.working_days)
+            #print(time_range.working_days)
             print(day_date.lower())
-            if day_date.lower() not in [d.lower() for d in time_range.working_days]:
-                return Response({"error": "El artista no trabaja ese dia"}, status=status.HTTP_400_BAD_REQUEST)   
+            #if day_date.lower() not in [d.lower() for d in time_range.working_days]:
+               # return Response({"error": "El artista no trabaja ese dia"}, status=status.HTTP_400_BAD_REQUEST)   
             start_time = time_range.time_start_day_one
             end_time = time_range.time_end_day_one
             if time_range.time_start_day_two and time_range.time_end_day_two:

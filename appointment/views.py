@@ -133,9 +133,9 @@ def reschedule(request):
         # Validar día laboral
         
         print("day_name", day_name)
-        if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
-            print("the employee does not work on this day")
-            return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
+        #if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
+           # print("the employee does not work on this day")
+           # return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar horario laboral
         for time_entry in times:
@@ -368,11 +368,11 @@ def get_available_times(employee_id, date):
 
     for entry in time_entries:
         # Comprueba si el día solicitado está en los días laborables del empleado
-        if date.strftime("%A") in entry.working_days:
+        #if date.strftime("%A") in entry.working_days:
             # Genera los horarios del primer turno del día
-            start_time = datetime.combine(date, entry.time_start_day_one)
-            end_time = datetime.combine(date, entry.time_end_day_one)
-            available_slots += generate_time_slots(start_time, end_time)
+           # start_time = datetime.combine(date, entry.time_start_day_one)
+           # end_time = datetime.combine(date, entry.time_end_day_one)
+           # available_slots += generate_time_slots(start_time, end_time)
 
             # Si el empleado trabaja en dos turnos
             if entry.double_day:
@@ -528,8 +528,8 @@ def create_appointment(request):
                 start_hour_t2 = time_entry.time_start_day_two = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
                 end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
             
-            if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
-                return Response({"error": "No es posible agendar una cita en un dia que no trabaja el artista"}, status=status.HTTP_400_BAD_REQUEST)
+           # if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
+                #return Response({"error": "No es posible agendar una cita en un dia que no trabaja el artista"}, status=status.HTTP_400_BAD_REQUEST)
             
             if time_entry.double_day:
                 if time.time() < start_hour_t1:

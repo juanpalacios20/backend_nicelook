@@ -496,15 +496,15 @@ def create_time(request, employee_id):
     double_day = request.data.get('double_day')
     time_start_day_one = request.data.get('time_start_day_one')
     time_end_day_one = request.data.get('time_end_day_one')
-    working_days = request.data.get('working_days', [])
+    #working_days = request.data.get('working_days', [])
 
     if not time_start_day_one or not time_end_day_one:
         return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
     
-    for time in times:
-        repeated = list(set(working_days) & set(time.working_days))
-        if repeated:
-            return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
+    #for time in times:
+       # repeated = list(set(working_days) & set(time.working_days))
+       # if repeated:
+        #    return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
     
     if double_day:
         time_start_day_two = request.data.get('time_start_day_two')
@@ -521,7 +521,7 @@ def create_time(request, employee_id):
             time_end_day_one=time_end_day_one,
             time_start_day_two=time_start_day_two,
             time_end_day_two=time_end_day_two,
-            working_days=working_days
+            #working_days=working_days
         )
     else:
         Time.objects.create(
@@ -530,7 +530,7 @@ def create_time(request, employee_id):
             state=True,
             time_start_day_one=time_start_day_one,
             time_end_day_one=time_end_day_one,
-            working_days=working_days
+            #working_days=working_days
         )
 
     return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
@@ -543,17 +543,17 @@ def update_time(request, time_id):
         double_day = request.data.get('double_day', False)
         time_start_day_one = request.data.get('time_start_day_one')
         time_end_day_one = request.data.get('time_end_day_one')
-        working_days = request.data.get('working_days')
+        #working_days = request.data.get('working_days')
         time_start_day_two = request.data.get('time_start_day_two')
         time_end_day_two = request.data.get('time_end_day_two')
 
-        if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
-            return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
+        #if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
+           # return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
 
         time.double_day = double_day if double_day is not None else time.double_day
         time.time_start_day_one = time_start_day_one if time_start_day_one is not None else time.time_start_day_one
         time.time_end_day_one = time_end_day_one if time_end_day_one is not None else time.time_end_day_one
-        time.working_days = working_days if working_days is not None else time.working_days
+        #time.working_days = working_days if working_days is not None else time.working_days
         time.time_start_day_two = time_start_day_two if time_start_day_two is not None else time.time_start_day_two
         time.time_end_day_two = time_end_day_two if time_end_day_two is not None else time.time_end_day_two
 
@@ -589,7 +589,7 @@ def get_time(request, employee_id):
                 'double_day': time.double_day,
                 'time_start_day_one': time.time_start_day_one,
                 'time_end_day_one': time.time_end_day_one,
-                'working_days': time.working_days,
+                #'working_days': time.working_days,
                 'time_start_day_two': time.time_start_day_two,
                 'time_end_day_two': time.time_end_day_two,
             }
