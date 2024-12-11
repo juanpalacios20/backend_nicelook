@@ -2,7 +2,8 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Client
 from .serializers import clientSerializer
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from appointment.models import Appointment
 from rest_framework.response import Response
 from rest_framework import status
@@ -159,3 +160,75 @@ class ClientLoginView(APIView):
             'email': refresh.access_token.get('email'),
             'client_id': client.id
         }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def registerClient(request):
+    try:
+        # Obtener los datos de la petición
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        phone = request.data.get('phone')
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        # Validar que se hayan recibido los datos
+        if first_name is None or last_name is None or phone is None or email is None or password is None:
+            return Response({'Error': 'No se recibieron todos los datos'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar si el usuario ya existe
+        try:
+            user = User.objects.get(email=email)
+            return Response({'Error': 'Este correo ya ha sido registrado, prueba con otro'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            pass
+        
+        # Crear el usuario
+        user = User.objects.create_user(email=email, username=email, password=password, first_name=first_name, last_name=last_name)
+        user.username = first_name + " " + last_name + str(user.id)
+        user.save() 
+        
+        # Crear el cliente
+        client = Client.objects.create(user=user, phone=phone)
+        return Response({'Mensaje': 'Cliente creado exitosamente', 'client_id': client.id}, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def loginClient(request):
+    try:
+        # Obtener los datos de la petición
+        email = request.data.get("email")
+        password = request.data.get("password")
+        
+        # Validar que se hayan recibido los datos
+        if email is None or password is None:
+            return Response({'Error': 'No se ha recibido el correo y la contraseña'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar si el usuario existe
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'Credenciales incorrectas': 'Comprueba que tus datos sean correctos e intenta de nuevo el inicio de sesión'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Autenticar al usuario
+        user = authenticate(request, username=user.username, password=password)
+        
+        # Verificar si el usuario se autenticó correctamente
+        if user is not None:
+            try:
+                client = Client.objects.get(user=user)
+                return Response({'Mensaje': 'Inicio de sesión exitoso', 'client_id': client.id}, status=status.HTTP_200_OK)
+            except Client.DoesNotExist:
+                return Response({'Error': 'Cuenta de cliente no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Si el usuario no se autenticó correctamente
+        else:
+            return Response({'Credenciales incorrectas': 'Comprueba que tus datos sean correctos e intenta de nuevo el inicio de sesión'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Manejo de errores
+    except Exception as e:
+        return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
