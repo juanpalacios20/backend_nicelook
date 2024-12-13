@@ -25,6 +25,7 @@ from image.models import Image
 from review.models import Review
 from review.serializers import reviewSerializer
 from schedule.models import Time
+from schedule.models import TimeException
 from schedule.serializers import timeSerializer
 
 
@@ -371,48 +372,6 @@ def getAvailableEmployees(request, id_employee):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-def calcular_disponibilidad_por_turno(turno_start, turno_end, appointments, new_date, employee):
-    """
-    Calcula los intervalos de disponibilidad dentro de un turno específico.
-    """
-    disponibilidad = []
-    turno_start_time = turno_start
-    turno_end_time = turno_end
-
-    for appointment in appointments:
-        for service in appointment.services.all():
-            service_duration = EmployeeServices.objects.filter(
-                employee=employee, service=service
-            ).first().duration
-
-            # Convertir appointment.time a datetime.time
-            appointment_start = datetime.datetime.combine(new_date, appointment.time.time())
-            appointment_end = appointment_start + service_duration
-
-            # Convertir de nuevo a time para las comparaciones
-            appointment_start = appointment_start.time()
-            appointment_end = appointment_end.time()
-
-            # Si hay un espacio antes de la cita
-            if appointment_start > turno_start_time:
-                disponibilidad.append((turno_start_time, appointment_start))
-
-            # Actualizar el inicio del rango disponible
-            turno_start_time = max(turno_start_time, appointment_end)
-
-    # Agregar tiempo restante después de la última cita
-    if turno_start_time < turno_end_time:
-        disponibilidad.append((turno_start_time, turno_end_time))
-
-    return disponibilidad
-
-
-
-
-
 @api_view(['GET'])
 def getInfoEmployee(request):
     try:
@@ -525,4 +484,89 @@ def getEmployees(request):
                 employee['time'] = timeSerializer(time).data
         return Response({'employeesList': data}, status=status.HTTP_200_OK)
     except Exception as e:  
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+    
+    
+from datetime import datetime, timedelta
+
+def calcular_disponibilidad_por_turno(employee, date, appointments):
+    """
+    Calcula la disponibilidad completa de un empleado en una fecha específica,
+    considerando los turnos, excepciones y citas programadas.
+    
+    :param employee: Empleado para el que se calcula la disponibilidad.
+    :param date: Fecha para la cual calcular la disponibilidad.
+    :param appointments: Lista de citas filtradas previamente.
+    :return: Lista de intervalos de disponibilidad o mensaje indicando estado.
+    """
+    disponibilidad_completa = []
+
+    # Filtrar turnos válidos para la fecha
+    turnos = Time.objects.filter(
+        employee=employee, date_start__lte=date, date_end__gte=date
+    )
+
+    if not turnos:
+        return "El Artista aún no ha definido un horario para esta fecha."
+
+    for turno in turnos:
+        # Procesar primer turno del día
+        turno_start_time = datetime.combine(date, turno.time_start_day_one)
+        turno_end_time = datetime.combine(date, turno.time_end_day_one)
+
+        # Si el turno es doble, procesar también el segundo turno
+        if turno.double_day and turno.time_start_day_two and turno.time_end_day_two:
+            turno_start_time_2 = datetime.combine(date, turno.time_start_day_two)
+            turno_end_time_2 = datetime.combine(date, turno.time_end_day_two)
+
+        # Filtrar excepciones para la fecha
+        excepciones = TimeException.objects.filter(
+            employee=employee, date_start__lte=date, date_end__gte=date
+        )
+
+        # Lista para los intervalos de disponibilidad
+        disponibilidad_turno = []
+
+        # Procesar cada turno (puede ser uno o dos por día)
+        for start_time, end_time in [(turno_start_time, turno_end_time)] + (
+            [(turno_start_time_2, turno_end_time_2)] if turno.double_day else []
+        ):
+            for excepcion in excepciones:
+                if excepcion.time_start and excepcion.time_end:
+                    excepcion_start = datetime.combine(date, excepcion.time_start)
+                    excepcion_end = datetime.combine(date, excepcion.time_end)
+
+                    # Excluir intervalos de excepción
+                    if start_time < excepcion_start:
+                        disponibilidad_turno.append((start_time.time(), excepcion_start.time()))
+
+                    start_time = max(start_time, excepcion_end)
+
+            # Si queda tiempo después de excepciones
+            if start_time < end_time:
+                disponibilidad_turno.append((start_time.time(), end_time.time()))
+
+            # Filtrar citas (appointments) dentro del rango del turno
+            for appointment in appointments:
+                for service in appointment.services.all():
+                    service_duration = EmployeeServices.objects.filter(
+                        employee=employee, service=service
+                    ).first().duration
+
+                    appointment_start = datetime.combine(date, appointment.time.time())
+                    appointment_end = appointment_start + timedelta(minutes=service_duration)
+
+                    # Ajustar disponibilidad según citas
+                    disponibilidad_turno = [
+                        (s, min(e, appointment_start.time())) for s, e in disponibilidad_turno if e > appointment_start.time()
+                    ]
+                    disponibilidad_turno += [
+                        (max(s, appointment_end.time()), e) for s, e in disponibilidad_turno if s < appointment_end.time()
+                    ]
+
+        disponibilidad_completa.extend(disponibilidad_turno)
+
+    if not disponibilidad_completa:
+        return "El Artista no tiene disponibilidad en esta fecha."
+
+    return disponibilidad_completa
