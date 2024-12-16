@@ -27,5 +27,6 @@ urlpatterns = [
     path('update_time/<int:time_id>/', views.update_time, name='update_time'),
     path('delete_time/<int:time_id>/', views.delete_time, name='delete_time'),
     path('EmployeeLogin/', EmployeeLogin.as_view(), name='employee_login'),
-    path('professional_reviews/<int:professional_id>/', views.professional_reviews, name="professional_reviews")
+    path('professional_reviews/<int:professional_id>/', views.professional_reviews, name="professional_reviews"),
+    path('create_exception/<int:employee_id>/', views.create_exception, name='create_exception'),
 ]

@@ -28,7 +28,7 @@ from employee_image.models import EmployeeImage
 from django.db import transaction
 from category.models import Category
 from service.models import Service
-from schedule.models import Time
+from schedule.models import Time, TimeException
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from dj_rest_auth.registration.views import SocialLoginView
@@ -496,15 +496,23 @@ def create_time(request, employee_id):
     double_day = request.data.get('double_day')
     time_start_day_one = request.data.get('time_start_day_one')
     time_end_day_one = request.data.get('time_end_day_one')
-    #working_days = request.data.get('working_days', [])
+    date_start = request.data.get('date_start')
+    date_end = request.data.get('date_end')
+    
+    time = Time.objects.filter(
+        employee=employee,
+        date_start = date_start,
+        date_end = date_end
+    )
+    
+    if time:
+        return Response({"error": "Ya hay un horario asignado para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not time_start_day_one or not time_end_day_one:
         return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
     
-    #for time in times:
-       # repeated = list(set(working_days) & set(time.working_days))
-       # if repeated:
-        #    return Response({"error": "Ya hay un horario asignado para el dia/los dias" + " " + str(repeated)}, status=status.HTTP_400_BAD_REQUEST)
+    if not date_start or not date_end:
+        return Response({"error": "La fecha es obligatoria"}, status=status.HTTP_400_BAD_REQUEST)
     
     if double_day:
         time_start_day_two = request.data.get('time_start_day_two')
@@ -520,7 +528,8 @@ def create_time(request, employee_id):
             time_end_day_one=time_end_day_one,
             time_start_day_two=time_start_day_two,
             time_end_day_two=time_end_day_two,
-            #working_days=working_days
+            date_start = date_start,
+            date_end = date_end
         )
     else:
         Time.objects.create(
@@ -528,11 +537,79 @@ def create_time(request, employee_id):
             double_day=double_day,
             time_start_day_one=time_start_day_one,
             time_end_day_one=time_end_day_one,
-            #working_days=working_days
+            date_start = date_start,
+            date_end = date_end
         )
 
     return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
 
+
+api_view(['POST'])
+def create_exception(request, employee_id):
+    try:
+        start_date = request.data.get('start_date')
+        end_date = request.data.get('end_date')
+        reason = request.data.get('reason')
+        time_start = request.data.get('time_start')
+        time_end = request.data.get('time_end')
+        exception = TimeException.objects.filter(
+            employee_id = employee_id,
+            date_start = start_date,
+            date_end = end_date
+        )
+        
+        if not start_date or not time_start or not time_end:
+            return Response({"error": "Los campos start_date, time_start y time_end son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        employee = Employee.objects.get(id=employee_id)
+        exception = TimeException.objects.filter(employee_id = employee_id,date_start = start_date,date_end = end_date)
+        if exception:
+            return Response({"error": "Ya hay una excepcion asignada para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if end_date and reason:
+            TimeException.objects.create(
+                employee=employee,
+                date_start = start_date,
+                date_end = end_date,
+                reason = reason,
+                time_start = time_start,
+                time_end = time_end,
+            )
+        if end_date and not reason:
+            TimeException.objects.create(
+                employee=employee,
+                date_start = start_date,
+                date_end = end_date,
+                reason = "Motivos personales",
+                time_start = time_start,
+                time_end = time_end,
+            )
+        if not end_date and reason:
+            TimeException.objects.create(
+                employee=employee,
+                date_start = start_date,
+                date_end = end_date,
+                reason = reason,
+                time_start = time_start,
+                time_end = time_end,
+            )
+        if not end_date and not reason:
+            TimeException.objects.create(
+                employee=employee,
+                date_start = start_date,
+                date_end = end_date,
+                reason = "Motivos personales",
+                time_start = time_start,
+                time_end = time_end,
+            )
+        return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+    
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
 
 @api_view(['PATCH'])
 def update_time(request, time_id):
