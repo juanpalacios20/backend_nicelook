@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime, timedelta
+
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -279,85 +280,104 @@ def getInfoEstablisment(request):
 @api_view(['GET'])
 def getAvailableEmployees(request, id_employee):
     try:
-        print("tin")
         # Obtener parámetros de la consulta
         year = int(request.query_params.get('year'))
         month = int(request.query_params.get('month'))
         day = int(request.query_params.get('day'))
-        new_date = datetime.datetime(year=year, month=month, day=day)
+        new_date = datetime(year=year, month=month, day=day)
 
         # Obtener empleado, horario y citas
         employee = Employee.objects.get(id=id_employee)
         time_ranges = Time.objects.filter(employee=employee)
-        appointments = Appointment.objects.filter(date=new_date, employee=employee, estate__icontains='Pendiente').order_by('time')
+        exception_ranges = TimeException.objects.filter(employee=employee)
+        appointments = Appointment.objects.filter(
+            date=new_date, 
+            employee=employee, 
+            estate__icontains='Pendiente'
+        ).order_by('time')
+        
         disponibilidad = []
 
         if not time_ranges:
             return Response({"error": "No se encontraron horarios para el empleado"}, status=status.HTTP_400_BAD_REQUEST)
+
         # Calcular disponibilidad para cada rango de tiempo
-        day_date = " "
-        if new_date.weekday() == 0:
-            day_date = "Lun"
-        elif new_date.weekday() == 1:
-            day_date = "Mar"
-        elif new_date.weekday() == 2:
-            day_date = "Mie"
-        elif new_date.weekday() == 3:
-            day_date = "Jue"
-        elif new_date.weekday() == 4:
-            day_date = "Vie"
-        elif new_date.weekday() == 5:
-            day_date = "Sab"
-        elif new_date.weekday() == 6:
-            day_date = "Dom"
-        print("day_date", day_date)
         for time_range in time_ranges:
-            print("entré")
-            #print(time_range.working_days)
-            print(day_date.lower())
-            #if day_date.lower() not in [d.lower() for d in time_range.working_days]:
-               # return Response({"error": "El artista no trabaja ese dia"}, status=status.HTTP_400_BAD_REQUEST)   
             start_time = time_range.time_start_day_one
             end_time = time_range.time_end_day_one
-            if time_range.time_start_day_two and time_range.time_end_day_two:
+
+            if time_range.double_day:
                 start_time_two = time_range.time_start_day_two
                 end_time_two = time_range.time_end_day_two
 
-            # Verificar disponibilidad en el primer turno (8 a 12)
+            if time_range.date_start > new_date.date() or time_range.date_end < new_date.date():
+                continue  # Saltar horarios que no aplican para este día
+
+            # Filtrar excepciones solo para el día actual
+            current_exceptions = exception_ranges.filter(
+                date_start__lte=new_date.date(),
+                date_end__gte=new_date.date()
+            )
+
+            # Verificar disponibilidad en el primer turno
             current_start_time = start_time
+            for exception in current_exceptions:
+                if exception.date_end:
+                            if exception.date_start <= new_date.date() and exception.date_end >= new_date.date():
+                                if exception.time_start and exception.time_end:
+                                    # Excluir el intervalo de la excepción
+                                    if exception.time_start <= current_start_time and current_start_time < exception.time_end:
+                                        print("entre si")
+                                        current_start_time = exception.time_end
+                                    if exception.time_start < end_time and end_time <= exception.time_end:
+                                        print("entre tambien")
+                                        end_time = exception.time_start
+
             for appointment in appointments:
-                # Verificar las citas dentro del primer turno
                 if appointment.time.time() >= current_start_time and appointment.time.time() < end_time:
-                    # Si hay un espacio antes de la cita
                     if appointment.time.time() > current_start_time:
                         disponibilidad.append((current_start_time, appointment.time.time()))
-                    # Actualizar el tiempo de inicio después de la cita
-                    contador = datetime.timedelta(hours=0, minutes=0, seconds=0)
+                    # Calcular duración total de los servicios
+                    contador = timedelta(hours=0, minutes=0, seconds=0)
                     for s in appointment.services.all():
                         service_duration = EmployeeServices.objects.filter(
-                            employee=employee, service=s).first().duration
+                            employee=employee, service=s
+                        ).first().duration
                         contador += service_duration
-                    current_start_time = (datetime.datetime.combine(new_date, appointment.time.time()) + contador).time()
+                    current_start_time = (datetime.combine(new_date, appointment.time.time()) + contador).time()
 
-            # Agregar tiempo restante después de la última cita en el primer turno
             if current_start_time < end_time:
                 disponibilidad.append((current_start_time, end_time))
 
-            # Verificar disponibilidad en el segundo turno (14 a 17)
+            # Verificar disponibilidad en el segundo turno
             if time_range.double_day:
                 current_start_time_two = start_time_two
+                for exception in current_exceptions:
+                    if exception.date_end:
+                            if exception.date_start <= new_date.date() and exception.date_end >= new_date.date():
+                                if exception.time_start and exception.time_end:
+                                    # Excluir el intervalo de la excepción
+                                    print(exception.time_start, current_start_time_two, exception.time_end)
+                                    if exception.time_start <= current_start_time_two and current_start_time_two < exception.time_end:
+                                        print("si entré")
+                                        current_start_time_two = exception.time_end
+                                    if exception.time_start < end_time and end_time <= exception.time_end:
+                                        print("tambien entré")
+                                        end_time_two = exception.time_start
+
                 for appointment in appointments:
-                    # Verificar las citas dentro del segundo turno
                     if appointment.time.time() >= current_start_time_two and appointment.time.time() < end_time_two:
-                        # Si hay un espacio antes de la cita
                         if appointment.time.time() > current_start_time_two:
                             disponibilidad.append((current_start_time_two, appointment.time.time()))
-                        # Actualizar el tiempo de inicio después de la cita
-                        service_duration = EmployeeServices.objects.filter(
-                            employee=employee, service__in=appointment.services.all()).first().duration
-                        current_start_time_two = (datetime.datetime.combine(new_date, appointment.time.time()) + service_duration).time()
+                        # Calcular duración total de los servicios
+                        contador = timedelta(hours=0, minutes=0, seconds=0)
+                        for s in appointment.services.all():
+                            service_duration = EmployeeServices.objects.filter(
+                                employee=employee, service=s
+                            ).first().duration
+                            contador += service_duration
+                        current_start_time_two = (datetime.combine(new_date, appointment.time.time()) + contador).time()
 
-                # Agregar tiempo restante después de la última cita en el segundo turno
                 if current_start_time_two < end_time_two:
                     disponibilidad.append((current_start_time_two, end_time_two))
 
@@ -370,6 +390,7 @@ def getAvailableEmployees(request, id_employee):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET'])
@@ -485,9 +506,6 @@ def getEmployees(request):
         return Response({'employeesList': data}, status=status.HTTP_200_OK)
     except Exception as e:  
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
-    
-    
-from datetime import datetime, timedelta
 
 def calcular_disponibilidad_por_turno(employee, date, appointments):
     """
