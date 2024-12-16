@@ -70,9 +70,13 @@ def Times(request, employee_id):
                             break
                 
                 # Guardar el estado para este día
+                time_serializer = timeSerializer(time)
+                exception_serializer = timeExceptionSerializer(exception)
                 times_info.append({
                     "date": current_date.strftime('%Y-%m-%d'),
-                    "state": state
+                    "state": state,
+                    "time": time_serializer.data,
+                    "exception": exception_serializer.data
                 })
         
         # Responder con los resultados
