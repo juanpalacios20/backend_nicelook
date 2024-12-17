@@ -549,6 +549,10 @@ def create_appointment(request):
                         exception5 = True
                     else:
                         exception5 = False
+            else:
+                exception3 = False
+                exception4 = False
+                exception5 = False
             if exceptions:
                 for exception in exceptions:
                     if exception6:
@@ -562,6 +566,8 @@ def create_appointment(request):
                                 exception6 = True
                             else:
                                 exception6 = False
+            else:
+                exception6 = False
 
         if exception1:
             return Response({"error": "La cita no puede ser agendada porque el artista no tiene turno ese dia pero tienes la opción de solicitar turno con el artista."}, status=status.HTTP_400_BAD_REQUEST)
@@ -575,50 +581,63 @@ def create_appointment(request):
             return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
         
     print("Validando disponibilidad de horario 2")
-    
-    for appointment in appointments:
-        appointment_start_time = appointment.time
-        
-        for service in appointment.services.all():
-            services = EmployeeServices.objects.filter(employee=employee_id, service=service)
-        duration_total = timedelta()
-        
-        for service in services:
-            duration_total = service.duration
+    if appointments:
+        for appointment in appointments:
+            appointment_start_time = appointment.time
             
-        appointment_end_time = (appointment.time + duration_total)
-        
-        if exception8:
-            if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
-                exception8 = True
+            for service in appointment.services.all():
+                services = EmployeeServices.objects.filter(employee=employee_id, service=service)
+            duration_total = timedelta()
+            
+            for service in services:
+                duration_total = service.duration
+                
+            appointment_end_time = (appointment.time + duration_total)
+            
+            if exception8:
+                if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
+                    exception8 = True
+                else:
+                    exception8 = False
+                
+            if exception9:
+                if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
+                    exception9 = True
+                else:
+                    exception9 = False
+            
+            for time1 in times:
+                if exception10:
+                    if final_time.time() >= time1.time_end_day_two:
+                        exception10 = True
+                    else:
+                        exception10 = False
+                    
+                if exception11:
+                    if final_time.time() >= time1.time_end_day_one:
+                        exception11 = True
+                    else:
+                        exception11 = False
+
+            print("exceptions")
+            if exceptions:
+                for exception in exceptions:
+                    print("pa ver si entla", exception)
+                    if exception7:
+                        if new_date >= exception.date_start and new_date <= exception.date_end:
+                            print("entré aunque no deberia entrar")
+                            if final_time.time() <= exception.time_end and final_time.time() >= exception.time_start or appointment_start_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
+                                exception7 = True
+                            else:
+                                exception7 = False
             else:
-                exception8 = False
-               
-        if exception9:
-            if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
-                exception9 = True
-            else:
-                exception9 = False
-        
-        for time1 in times:
-            if exception10:
-                if final_time.time() >= time1.time_end_day_two:
-                    exception10 = True
-                else:
-                    exception10 = False
-                   
-            if exception11:
-                if final_time.time() >= time1.time_end_day_one:
-                    exception11 = True
-                else:
-                    exception11 = False
-    
-        for exception in exceptions:
-            if exception7:
-                if final_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
-                    exception7 = True
-                else:
-                    exception7 = False
+                exception7 = False
+    else: 
+        exception7 = False
+        exception8 = False
+        exception9 = False
+        exception10 = False
+        exception11 = False
     if exception7:
         return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
     if exception8:
