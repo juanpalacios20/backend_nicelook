@@ -21,16 +21,11 @@ def time_to_hhmmss(t):
 @api_view(['GET'])
 def Times(request, employee_id):
     try:
-        # Obtener datos del empleado y sus horarios
         employee = Employee.objects.get(id=employee_id)
         times = Time.objects.filter(employee=employee)
         exceptions = TimeException.objects.filter(employee=employee)
-        
-        if not employee_id:
-            return Response({"error": "El employee_id no ha sido proporcionado"}, status=status.HTTP_404_NOT_FOUND)
-        if not employee:
-            return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        if not times:
+
+        if not times.exists():
             return Response({"error": "No se encontraron horarios para el empleado"}, status=status.HTTP_404_NOT_FOUND)
 
         # Lista para almacenar los resultados
@@ -39,48 +34,58 @@ def Times(request, employee_id):
         # Iterar sobre los horarios
         for time in times:
             delta = time.date_end - time.date_start
-            for day_offset in range(delta.days + 1):  # Iterar por cada día en el rango
+
+            # Iterar por cada día dentro del rango de fechas
+            for day_offset in range(delta.days + 1):
                 current_date = time.date_start + timedelta(days=day_offset)
                 state = "Completa"  # Estado predeterminado
-                
-                # Revisar las excepciones para este día
-                if current_date.day == 8:
-                    print(exception.time_start, timedelta_to_hhmmss(timedelta(hours=00, minutes=00, seconds=00)), exception.time_end, timedelta_to_hhmmss(timedelta(hours=23, minutes=59, seconds=59)))
+                exception_details = None
+
+                # Verificar si hay excepciones para este día
                 for exception in exceptions:
-                    # Verificar si la excepción afecta el día actual
+                    # Verifica si la excepción afecta el rango de fechas del horario laboral
                     if exception.date_start <= current_date <= exception.date_end:
-                        # Caso 1: excepción afecta todo el día
-                        if time.double_day:
-                            if time.time_start_day_one == exception.time_start <= exception.time_end == time.time_end_day_two:
-                                state = "NoLaboral"
-                                break
-                        else:
-                            if time.time_start_day_one == exception.time_start <= exception.time_end == time.time_end_day_one:
-                                state = "NoLaboral"
-                                break
-                        if time_to_hhmmss(exception.time_start) == timedelta_to_hhmmss(timedelta(hours=00, minutes=00, seconds=00)) and time_to_hhmmss(exception.time_end) == timedelta_to_hhmmss(timedelta(hours=23, minutes=59, seconds=59)):
-                            print("entré")
-                            state = "NoLaboral"
-                            break
                         
-                        # Caso 2: excepción afecta parcialmente
-                        if exception.time_start <= time.time_start_day_one <= exception.time_end or \
-                           exception.time_start <= time.time_start_day_two <= exception.time_end:
+                        # Definimos los horarios del primer día y, si aplica, del segundo día
+                        day_one_start = time.time_start_day_one
+                        day_one_end = time.time_end_day_one
+                        day_two_start = time.time_start_day_two if time.double_day else None
+                        day_two_end = time.time_end_day_two if time.double_day else None
+
+                        # Caso 1: NoLaboral - Excepción cubre completamente los horarios de trabajo
+                        if (
+                            (exception.time_start <= day_one_start and exception.time_end >= day_one_end) and
+                            (not time.double_day or (exception.time_start <= day_two_start and exception.time_end >= day_two_end))
+                        ):
+                            state = "NoLaboral"
+
+                        # Caso 2: Mixta - Excepción afecta parcialmente los horarios de trabajo
+                        elif (
+                            (exception.time_start < day_one_end and exception.time_end > day_one_start) or
+                            (time.double_day and exception.time_start < day_two_end and exception.time_end > day_two_start)
+                        ):
                             state = "Mixta"
-                            break
-                
-                # Guardar el estado para este día
-                time_serializer = timeSerializer(time)
-                exception_serializer = timeExceptionSerializer(exception)
+
+                        # Caso 3: Jornada Completa - La excepción no afecta el horario laboral
+                        else:
+                            state = "Jornada Completa"
+                        
+                        # Serialización de los detalles de la excepción
+                        exception_details = timeExceptionSerializer(exception).data
+                        break  # Salir del ciclo al encontrar la excepción aplicable
+
                 times_info.append({
                     "date": current_date.strftime('%Y-%m-%d'),
                     "state": state,
-                    "time": time_serializer.data,
-                    "exception": exception_serializer.data
+                    "time": timeSerializer(time).data,
+                    "exception": exception_details
                 })
-        
+
         # Responder con los resultados
         return Response({'times': times_info}, status=status.HTTP_200_OK)
 
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
