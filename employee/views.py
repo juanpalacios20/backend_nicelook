@@ -487,9 +487,7 @@ def delete_photo(request, establisment_id, employee_id):
 def create_time(request, employee_id):
     try:
         employee = Employee.objects.get(id=employee_id)
-        print("hola")
         times = Time.objects.filter(employee=employee)
-        print("hola2")    
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -542,9 +540,85 @@ def create_time(request, employee_id):
         )
 
     return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+            
 
+@api_view(['PATCH'])
+def update_time(request, employee_id):
+    try:
+        double_day = request.data.get('double_day', False)
+        time_start_day_one = request.data.get('time_start_day_one')
+        time_end_day_one = request.data.get('time_end_day_one')
+        new_time_start_day_one = request.data.get('new_time_start_day_one')
+        new_time_end_day_one = request.data.get('new_time_end_day_one')
+        new_time_start_day_two = request.data.get('new_time_start_day_two')
+        new_time_end_day_two = request.data.get('new_time_end_day_two')
+        date_start = request.data.get('date_start')
+        date_end = request.data.get('date_end')
+        new_date_start = request.data.get('new_date_start')
+        new_date_end = request.data.get('new_date_end')
+        time = Time.objects.get(employee=employee_id, time_start_day_one=time_start_day_one, time_end_day_one=time_end_day_one, date_start=date_start, date_end=date_end)
 
-api_view(['POST'])
+        time.double_day = double_day if double_day is not None else time.double_day
+        time.time_start_day_one = new_time_start_day_one if new_time_start_day_one is not None else time.time_start_day_one
+        time.time_end_day_one = new_time_end_day_one if new_time_end_day_one is not None else time.time_end_day_one
+        time.time_start_day_two = new_time_start_day_two if new_time_start_day_two is not None else time.time_start_day_two
+        time.time_end_day_two = new_time_end_day_two if new_time_end_day_two is not None else time.time_end_day_two
+        time.date_start = new_date_start if new_date_start is not None else time.date_start
+        time.date_end = new_date_end if new_date_end is not None else time.date_end
+        time.save()
+
+        return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
+@api_view(['DELETE'])
+def delete_time(request, employee_id):
+    try:
+        #necesario enviar estos campos para encontrar el horario que es 
+        date_start = request.query_params.get('date_start')
+        date_end = request.query_params.get('date_end')
+        time_start_day_one = request.query_params.get('time_start_day_one')
+        time_end_day_one = request.query_params.get('time_end_day_one')
+        time = Time.objects.filter(employee=employee_id, time_start_day_one=time_start_day_one, time_end_day_one=time_end_day_one, date_start=date_start, date_end=date_end).first()
+        if time:
+            time.delete()
+        else:
+            return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
+    except Time.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+def get_time(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        times = Time.objects.filter(employee=employee)
+
+        # Preparamos los datos a devolver
+        times_data = []
+        for time in times:
+            time_data = {
+                'id': time.id,
+                'double_day': time.double_day,
+                'time_start_day_one': time.time_start_day_one,
+                'time_end_day_one': time.time_end_day_one,
+                #'working_days': time.working_days,
+                'time_start_day_two': time.time_start_day_two,
+                'time_end_day_two': time.time_end_day_two,
+            }
+            times_data.append(time_data)  # Agregar a la lista
+
+        return Response(times_data, status=status.HTTP_200_OK)  # Devolver la lista completa
+
+    except Employee.DoesNotExist:
+        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
 def create_exception(request, employee_id):
     try:
         start_date = request.data.get('start_date')
@@ -555,7 +629,9 @@ def create_exception(request, employee_id):
         exception = TimeException.objects.filter(
             employee_id = employee_id,
             date_start = start_date,
-            date_end = end_date
+            date_end = end_date,
+            time_start = time_start,
+            time_end = time_end
         )
         
         if not start_date or not time_start or not time_end:
@@ -564,7 +640,7 @@ def create_exception(request, employee_id):
         employee = Employee.objects.get(id=employee_id)
         exception = TimeException.objects.filter(employee_id = employee_id,date_start = start_date,date_end = end_date)
         if exception:
-            return Response({"error": "Ya hay una excepcion asignada para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Ya hay una excepcion asignada para la fecha y hora seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
         
         if end_date and reason:
             TimeException.objects.create(
@@ -609,75 +685,56 @@ def create_exception(request, employee_id):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-
-@api_view(['PATCH'])
-def update_time(request, time_id):
-    try:
-        time = Time.objects.get(id=time_id)
-        double_day = request.data.get('double_day', False)
-        time_start_day_one = request.data.get('time_start_day_one')
-        time_end_day_one = request.data.get('time_end_day_one')
-        #working_days = request.data.get('working_days')
-        time_start_day_two = request.data.get('time_start_day_two')
-        time_end_day_two = request.data.get('time_end_day_two')
-
-        #if not double_day and not time_start_day_one and not time_end_day_one and not working_days and not time_start_day_two and not time_end_day_two: 
-           # return Response({"error": "No se proporcionaron datos para actualizar el horario"}, status=status.HTTP_400_BAD_REQUEST)
-
-        time.double_day = double_day if double_day is not None else time.double_day
-        time.time_start_day_one = time_start_day_one if time_start_day_one is not None else time.time_start_day_one
-        time.time_end_day_one = time_end_day_one if time_end_day_one is not None else time.time_end_day_one
-        #time.working_days = working_days if working_days is not None else time.working_days
-        time.time_start_day_two = time_start_day_two if time_start_day_two is not None else time.time_start_day_two
-        time.time_end_day_two = time_end_day_two if time_end_day_two is not None else time.time_end_day_two
-
-        time.save()
-
-        return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
-    except Time.DoesNotExist:
-        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     
-@api_view(['DELETE'])
-def delete_time(request, time_id):
+@api_view(['PATCH'])
+def update_exception(request, employee_id):
     try:
-        time = Time.objects.get(id=time_id)
-        time.delete()
-        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
-    except Time.DoesNotExist:
+        #en este metodo es necesario enviar las fechas de inicio y final y las horas de inicio y final para actualizar la excepcion
+        #si se va a actualizar la fecha u hora debe enviar un new_date_start o new_date_end o new_time_start o new_time_end
+        #según sea el caso
+        date_start = request.data.get('date_start')
+        date_end = request.data.get('date_end')
+        reason = request.data.get('reason')
+        time_start = request.data.get('time_start')
+        time_end = request.data.get('time_end')
+        new_date_start = request.data.get('new_date_start')
+        new_date_end = request.data.get('new_date_end')
+        new_time_start = request.data.get('new_time_start')
+        new_time_end = request.data.get('new_time_end')
+        if date_start and date_end:
+            exception = TimeException.objects.get(employee=employee_id, date_start=date_start, date_end=date_end)
+            if not new_date_start is None:
+                exception.date_start = new_date_start
+                exception.date_end = new_date_end
+            if not reason is None:
+                exception.reason = reason
+            if not new_time_start is None:
+                exception.time_start = time_start
+            if not new_time_end is None:
+                exception.time_end = time_end
+            exception.save()
+            print("exception:", exception.date_start, exception.date_end, exception.reason, exception.time_start, exception.time_end)
+            return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
+    except TimeException.DoesNotExist:
         return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-@api_view(['GET'])
-def get_time(request, employee_id):
-    try:
-        employee = Employee.objects.get(id=employee_id)
-        times = Time.objects.filter(employee=employee)
-
-        # Preparamos los datos a devolver
-        times_data = []
-        for time in times:
-            time_data = {
-                'id': time.id,
-                'double_day': time.double_day,
-                'time_start_day_one': time.time_start_day_one,
-                'time_end_day_one': time.time_end_day_one,
-                #'working_days': time.working_days,
-                'time_start_day_two': time.time_start_day_two,
-                'time_end_day_two': time.time_end_day_two,
-            }
-            times_data.append(time_data)  # Agregar a la lista
-
-        return Response(times_data, status=status.HTTP_200_OK)  # Devolver la lista completa
-
-    except Employee.DoesNotExist:
-        return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+@api_view(['DELETE'])
+def delete_exception(request, employee_id):
+    try:
+        date_start = request.query_params.get('date_start')
+        date_end = request.query_params.get('date_end')
+        time_start = request.query_params.get('time_start')
+        time_end = request.query_params.get('time_end')
+        exception = TimeException.objects.filter(employee=employee_id, date_start=date_start, date_end=date_end, time_start=time_start, time_end=time_end).first()
+        exception.delete()
+        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
+    except TimeException.DoesNotExist:
+        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      
 @api_view(['GET'])
 def history_appointments(request, employee_id):
     try:
