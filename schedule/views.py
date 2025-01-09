@@ -36,7 +36,7 @@ def Times(request, employee_id):
             for day_offset in range(delta.days + 1):
                 current_date = time.date_start + timedelta(days=day_offset)
                 state = "Completa"
-                exception_details = None
+                exception_details = []
 
                 # Verificar excepciones aplicables al día
                 for exception in exceptions:
@@ -59,8 +59,8 @@ def Times(request, employee_id):
                         ):
                             state = "Mixta"
 
-                        exception_details = timeExceptionSerializer(exception).data
-                        break
+                        exception_details.append({"timeException": timeExceptionSerializer(exception).data})
+                        
 
                 times_info.append({
                     "date": current_date.strftime('%Y-%m-%d'),

@@ -626,6 +626,8 @@ def create_exception(request, employee_id):
         reason = request.data.get('reason')
         time_start = request.data.get('time_start')
         time_end = request.data.get('time_end')
+        employee = Employee.objects.get(id=employee_id)
+        
         exception = TimeException.objects.filter(
             employee_id = employee_id,
             date_start = start_date,
@@ -637,8 +639,6 @@ def create_exception(request, employee_id):
         if not start_date or not time_start or not time_end:
             return Response({"error": "Los campos start_date, time_start y time_end son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
         
-        employee = Employee.objects.get(id=employee_id)
-        exception = TimeException.objects.filter(employee_id = employee_id,date_start = start_date,date_end = end_date)
         if exception:
             return Response({"error": "Ya hay una excepcion asignada para la fecha y hora seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -678,7 +678,7 @@ def create_exception(request, employee_id):
                 time_start = time_start,
                 time_end = time_end,
             )
-        return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+        return Response({"success": "Excepcion de horario creado exitosamente"}, status=status.HTTP_201_CREATED)
     
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
