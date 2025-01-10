@@ -54,12 +54,11 @@ def Times(request, employee_id):
                             state = "NoLaboral"
                         # Si la excepcion abarca un rango parcial entonces es un dia mixto y en el front se muestra amarillo    
                         elif (
-                            (exception.time_start < day_one_end and exception.time_end > day_one_start) or
-                            (time.double_day and exception.time_start < day_two_end and exception.time_end > day_two_start)
+                            exception.date_start <= current_date <= exception.date_end 
                         ):
                             state = "Mixta"
 
-                        exception_details.append({"timeException": timeExceptionSerializer(exception).data})
+                        exception_details.append(timeExceptionSerializer(exception).data)
                         
 
                 times_info.append({
@@ -82,7 +81,7 @@ def Times(request, employee_id):
                 if not any(time.date_start <= current_date <= time.date_end for time in times):
                     times_info.append({
                         "date": current_date.strftime('%Y-%m-%d'),
-                        "state": "Jornada no laboral",
+                        "state": "NoLaboral",
                         "time": None,
                         "exception": timeExceptionSerializer(exception).data,
                     })

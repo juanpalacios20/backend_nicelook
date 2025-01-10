@@ -488,58 +488,60 @@ def create_time(request, employee_id):
     try:
         employee = Employee.objects.get(id=employee_id)
         times = Time.objects.filter(employee=employee)
+
+        double_day = request.data.get('double_day')
+        time_start_day_one = request.data.get('time_start_day_one')
+        time_end_day_one = request.data.get('time_end_day_one')
+        date_start = request.data.get('date_start')
+        date_end = request.data.get('date_end')
+        
+        time = Time.objects.filter(
+            employee=employee,
+            date_start = date_start,
+            date_end = date_end
+        )
+        
+        if time:
+            return Response({"error": "Ya hay un horario asignado para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not time_start_day_one or not time_end_day_one:
+            return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not date_start or not date_end:
+            return Response({"error": "La fecha es obligatoria"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if double_day:
+            time_start_day_two = request.data.get('time_start_day_two')
+            time_end_day_two = request.data.get('time_end_day_two')
+            
+            if not time_start_day_two or not time_end_day_two:
+                return Response({"error": "El horario del segundo turno es obligatorio si hay doble turno"}, status=status.HTTP_400_BAD_REQUEST)
+
+            Time.objects.create(
+                employee=employee,
+                double_day=double_day,
+                time_start_day_one=time_start_day_one,
+                time_end_day_one=time_end_day_one,
+                time_start_day_two=time_start_day_two,
+                time_end_day_two=time_end_day_two,
+                date_start = date_start,
+                date_end = date_end
+            )
+        else:
+            Time.objects.create(
+                employee=employee,
+                double_day=double_day,
+                time_start_day_one=time_start_day_one,
+                time_end_day_one=time_end_day_one,
+                date_start = date_start,
+                date_end = date_end
+            )
+
+        return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-    double_day = request.data.get('double_day')
-    time_start_day_one = request.data.get('time_start_day_one')
-    time_end_day_one = request.data.get('time_end_day_one')
-    date_start = request.data.get('date_start')
-    date_end = request.data.get('date_end')
-    
-    time = Time.objects.filter(
-        employee=employee,
-        date_start = date_start,
-        date_end = date_end
-    )
-    
-    if time:
-        return Response({"error": "Ya hay un horario asignado para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
-
-    if not time_start_day_one or not time_end_day_one:
-        return Response({"error": "El horario del primer turno es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if not date_start or not date_end:
-        return Response({"error": "La fecha es obligatoria"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if double_day:
-        time_start_day_two = request.data.get('time_start_day_two')
-        time_end_day_two = request.data.get('time_end_day_two')
-        
-        if not time_start_day_two or not time_end_day_two:
-            return Response({"error": "El horario del segundo turno es obligatorio si hay doble turno"}, status=status.HTTP_400_BAD_REQUEST)
-
-        Time.objects.create(
-            employee=employee,
-            double_day=double_day,
-            time_start_day_one=time_start_day_one,
-            time_end_day_one=time_end_day_one,
-            time_start_day_two=time_start_day_two,
-            time_end_day_two=time_end_day_two,
-            date_start = date_start,
-            date_end = date_end
-        )
-    else:
-        Time.objects.create(
-            employee=employee,
-            double_day=double_day,
-            time_start_day_one=time_start_day_one,
-            time_end_day_one=time_end_day_one,
-            date_start = date_start,
-            date_end = date_end
-        )
-
-    return Response({"success": "Horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
 @api_view(['PATCH'])
