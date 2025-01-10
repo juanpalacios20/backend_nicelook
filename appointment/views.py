@@ -89,6 +89,7 @@ def reschedule(request):
         month = request.data.get('month')
         year = request.data.get('year')
         time = request.data.get('time')
+
         if not all([id_appointment, year, month, day, time]):
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -96,22 +97,6 @@ def reschedule(request):
         new_date = date(year=int(year), month=int(month), day=int(day))
         new_time = datetime(year=int(year), month=int(month), day=int(day),
                             hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
-        
-        day_name = new_date.strftime('%a')
-        if new_date.weekday() == 0:
-            day_name = "Lun"
-        elif new_date.weekday() == 1:
-            day_name = "Mar"
-        elif new_date.weekday() == 2:
-            day_name = "Mie"
-        elif new_date.weekday() == 3:
-            day_name = "Jue"
-        elif new_date.weekday() == 4:
-            day_name = "Vie"
-        elif new_date.weekday() == 5:
-            day_name = "Sab"
-        elif new_date.weekday() == 6:
-            day_name = "Dom"
 
         # Obtener la cita existente
         try:
@@ -121,41 +106,47 @@ def reschedule(request):
 
         employee = appointment.employee
         times = Time.objects.filter(employee=employee)
+        exceptions = TimeException.objects.filter(employee=employee, date_start__lte=new_date, date_end__gte=new_date)
         appointments = Appointment.objects.filter(employee=employee, date=new_date).exclude(id=id_appointment)
 
         # Verificar duración total de los servicios
         services = appointment.services.all()
         total_duration = sum([EmployeeServices.objects.get(employee=employee, service=service).duration for service in services], timedelta())
-
         end_time = new_time + total_duration
 
+        # Validar excepciones laborales
+        if exceptions.exists():
+            for exception in exceptions:
+                if exception.time_start and exception.time_end:
+                    exception_start = datetime.combine(new_date, exception.time_start)
+                    exception_end = datetime.combine(new_date, exception.time_end)
 
-        # Validar día laboral
-        
-        print("day_name", day_name)
-        #if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
-           # print("the employee does not work on this day")
-           # return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
+                    if (new_time >= exception_start and new_time < exception_end) or \
+                       (end_time > exception_start and end_time <= exception_end):
+                        return Response({"error": "El profesional no está disponible en este horario debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"error": "El profesional no está disponible en esta fecha debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar horario laboral
+        is_within_schedule = False
         for time_entry in times:
-            start_hour_t1 = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
-            end_hour_t1 = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
-            if time_entry.time_start_day_two and time_entry.time_end_day_two:
-                start_hour_t2 = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
-                end_hour_t2 = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
+            start_hour_t1 = datetime.combine(new_date, time_entry.time_start_day_one)
+            end_hour_t1 = datetime.combine(new_date, time_entry.time_end_day_one)
+
+            if time_entry.double_day:
+                start_hour_t2 = datetime.combine(new_date, time_entry.time_start_day_two)
+                end_hour_t2 = datetime.combine(new_date, time_entry.time_end_day_two)
             else:
                 start_hour_t2 = end_hour_t2 = None
 
-            if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
-               (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
-                print("Appointment time is outside of working hours")
-                return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
+            if (start_hour_t1 <= new_time < end_hour_t1 or
+                (start_hour_t2 and start_hour_t2 <= new_time < end_hour_t2)) and \
+               (end_time <= end_hour_t1 or (start_hour_t2 and end_time <= end_hour_t2)):
+                is_within_schedule = True
+                break
 
-            if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
-               (end_time.time() > end_hour_t2):
-                print("Appointment duration exceeds working hours")
-                return Response({"error": "Duración de la cita excede el horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
+        if not is_within_schedule:
+            return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
         for existing_appointment in appointments:
@@ -166,8 +157,7 @@ def reschedule(request):
 
             if (new_time >= existing_start_time and new_time < existing_end_time) or \
                (end_time > existing_start_time and end_time <= existing_end_time):
-                return Response({"error": "Conflicto con otra cita ya programada"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Conflicto con otra cita ya programada"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Actualizar la cita
         appointment.date = new_date
@@ -177,11 +167,10 @@ def reschedule(request):
         # Enviar notificaciones y actualizar en Google Calendar
         refresh_access_token(employee.token, employee.id)
         update_google_calendar(appointment, new_time)
-
         send_email_notification(appointment)
 
         return Response({"success": "Appointment rescheduled successfully"}, status=status.HTTP_200_OK)
-    
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ConnectionResetError:
