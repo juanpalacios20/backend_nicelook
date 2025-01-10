@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from rest_framework.response import Response
 from rest_framework import status
 
+from client.models import Client
 from product.models import Product
 from service.serializers import serviceSerializer
 from .models import Establisment
@@ -28,6 +29,7 @@ from review.serializers import reviewSerializer
 from schedule.models import Time
 from schedule.models import TimeException
 from schedule.serializers import timeSerializer
+from appointment_request.models import Appointment_Request
 
 
 # Create your views here.
@@ -112,7 +114,7 @@ def get_establisment(request, establisment_id):
         }, status=200)
 
     except Establisment.DoesNotExist:
-        return JsonResponse({'error': 'Establecimiento no existe'}, status=404)
+        return JsonResponse({'error': 'El Establecimiento no existe'}, status=404)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -134,7 +136,7 @@ def get_filter_payments_service(request, establisment_id):
         
         # Verifica que los parámetros de año y mes están presentes
         if not year or not month:
-            return JsonResponse({'error': 'Year, month and day are required parameters'}, status=400)
+            return JsonResponse({'error': 'El año, el mes y el día son parámetros obligatorios'}, status=400)
         
         # Busca el establecimiento
         establisment = Establisment.objects.get(id=establisment_id)
@@ -145,7 +147,7 @@ def get_filter_payments_service(request, establisment_id):
             date__year=year
         )
         if not appointments.exists():
-            return JsonResponse({'error': 'No appointments found'}, status=404) 
+            return JsonResponse({'error': 'No se han encontrado citas'}, status=404) 
         
         for appointment in appointments:
             employee = Employee.objects.get(id=appointment.employee.id)
@@ -192,11 +194,11 @@ def get_filter_payments_service(request, establisment_id):
         }, status=200)
 
     except Establisment.DoesNotExist:
-        return JsonResponse({'error': 'No establisment found'}, status=404)
+        return JsonResponse({'error': 'No se ha encontrado el establecimiento'}, status=404)
     except EmployeeServices.DoesNotExist:
-        return JsonResponse({'error': 'Employee service not found'}, status=404)
+        return JsonResponse({'error': 'No se ha encontrado el servicio del empleado'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': "Something went wrong"}, status=500)
+        return JsonResponse({'error': "Algo salio mal"}, status=500)
 
 @api_view(['GET'])
 def servicesByEstablisment(request, employee_id):
@@ -216,7 +218,7 @@ def servicesByEstablisment(request, employee_id):
         }, status=200)
 
     except Employee.DoesNotExist:
-        return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -588,3 +590,62 @@ def calcular_disponibilidad_por_turno(employee, date, appointments):
         return "El Artista no tiene disponibilidad en esta fecha."
 
     return disponibilidad_completa
+
+@api_view(['POST'])
+def create_appointment_request(request, client_id):
+    try:
+        # Obtener datos del cuerpo de la solicitud
+        data = json.loads(request.body)
+        employee_id = data.get('employee_id')
+        services = data.get('services')
+        created_at = data.get('appointment_datetime')
+        estate = data.get('estate', False)  # Por defecto es False
+
+        # Validar datos obligatorios
+        if not employee_id or not services or not created_at:
+            return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
+
+        # Obtener empleado y cliente
+        employee = Employee.objects.get(id=employee_id)
+        client = Client.objects.get(id=client_id)
+
+        # Validar que los servicios existan
+        valid_services = Service.objects.filter(id__in=services)
+        if valid_services.count() != len(services):
+            return JsonResponse({'error': 'Uno o más servicios no existen'}, status=404)
+
+        # Crear la cita solicitada
+        appointment_request = Appointment_Request.objects.create(
+            client=client,
+            employee=employee,
+            estate=estate,
+            created_at=created_at
+        )
+
+        # Asignar servicios
+        appointment_request.services.set(valid_services)
+
+        # Respuesta exitosa
+        return JsonResponse({
+            'mensaje': 'Cita solicitada con exito',
+            'cita_solicitada': {
+                'id': appointment_request.id,
+                'cliente': f"{client.user.first_name} {client.user.last_name}",
+                'empleado': f"{employee.user.first_name} {employee.user.last_name}",
+                'fecha_hora': appointment_request.created_at,
+                'estado': appointment_request.estate,
+                'servicios': [service.name for service in appointment_request.services.all()]
+            }
+        }, status=201)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+
+    except Employee.DoesNotExist:
+        return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
+
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

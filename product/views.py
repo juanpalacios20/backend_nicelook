@@ -32,11 +32,11 @@ def addProduct(request):
         estate = True
 
         if not name or not price or not distributor or not entry_date or not expiration_date or not quantity or not establisment:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         if not description:
             description = ''
         if Product.objects.filter(code=code).exists():
-            return Response({'error': 'codigo ya existe'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El codigo ya existe'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not description:
             description = ''
@@ -48,7 +48,7 @@ def addProduct(request):
                                quantity=quantity, estate=estate,
                                establisment=Establisment.objects.get(id=establisment),
                                brand=brand, discount=0, purchase_price=purchase_price)
-        return Response({'message': 'Product added successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Producto añadido exitosamente'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -57,7 +57,7 @@ def getProducts(request):
     try:
         id_establisment = request.query_params.get('id_establisment')
         if not id_establisment:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         products = Product.objects.filter(establisment=Establisment.objects.get(id=id_establisment))
         serializer = productSerializer(products, many=True)
         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
@@ -104,7 +104,7 @@ def updateProduct(request):
         if quantity and quantity > 0:
             product.quantity = quantity
         else:
-            return Response({'error': 'Qantidad debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)    
+            return Response({'error': 'Cantidad debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)    
         if not estate:
             product.estate = estate
         else:
@@ -120,7 +120,7 @@ def updateProduct(request):
         else:
             return Response({'error': 'Precio de compra debe ser mayor a 0'}, status=status.HTTP_400_BAD_REQUEST)
         product.save()
-        return Response({'message': 'Product updated successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Producto actualizado exitosamente'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
@@ -131,7 +131,7 @@ def deleteProduct(request):
         product_id = request.query_params.get('product_id')
         product = Product.objects.get(id=product_id)
         product.delete()
-        return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Producto eliminado exitosamente'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     

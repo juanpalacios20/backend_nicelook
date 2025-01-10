@@ -63,9 +63,7 @@ def appointment_list(request):
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
-        print(day, month, year)
         appointments_date = date(year, month, day)
-        print(appointments_date)
         appointments = Appointment.objects.filter(date = appointments_date, establisment = id)
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
@@ -90,7 +88,7 @@ def reschedule(request):
         year = request.data.get('year')
         time = request.data.get('time')
         if not all([id_appointment, year, month, day, time]):
-            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Faltan campos obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Construir fecha y hora de la nueva cita
         new_date = date(year=int(year), month=int(month), day=int(day))
@@ -117,7 +115,7 @@ def reschedule(request):
         try:
             appointment = Appointment.objects.get(id=id_appointment)
         except Appointment.DoesNotExist:
-            return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Cita no encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
         employee = appointment.employee
         times = Time.objects.filter(employee=employee)
@@ -132,7 +130,6 @@ def reschedule(request):
 
         # Validar día laboral
         
-        print("day_name", day_name)
         #if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
            # print("the employee does not work on this day")
            # return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
@@ -149,12 +146,10 @@ def reschedule(request):
 
             if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
                (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
-                print("Appointment time is outside of working hours")
                 return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
             if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
                (end_time.time() > end_hour_t2):
-                print("Appointment duration exceeds working hours")
                 return Response({"error": "Duración de la cita excede el horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
@@ -180,13 +175,12 @@ def reschedule(request):
 
         send_email_notification(appointment)
 
-        return Response({"success": "Appointment rescheduled successfully"}, status=status.HTTP_200_OK)
+        return Response({"success": "Cita reprogramada con éxito"}, status=status.HTTP_200_OK)
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ConnectionResetError:
-        print("Client disconnected unexpectedly")
-        return Response({"error": "Client disconnected unexpectedly"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Cliente desconectado inesperadamente"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -229,7 +223,6 @@ def update_google_calendar( appointment, time):
 
     # Datos para actualizar el evento
     event_id = appointment.event_id
-    print(event_id)  # Asegúrate de almacenar el ID del evento en tu modelo
     if not event_id:
         logger.error("El appointment no tiene un 'event_id' asignado.")
         raise Exception("El appointment no tiene un 'event_id' asignado.")
@@ -266,7 +259,6 @@ def update_google_calendar( appointment, time):
             appointment.event_id = response['id']
             appointment.estate = "Pendiente"
             appointment.save()
-            print(appointment.estate)
 
             # Preparar el correo de notificación
             subject = "Cita Reprogramada"
@@ -383,8 +375,6 @@ def get_available_times(employee_id, date):
     # Filtrar los horarios ocupados por citas ya existentes
     appointments = Appointment.objects.filter(employee_id=employee_id, time__date=date)
     occupied_times = [appointment.time.replace(tzinfo=None) for appointment in appointments]
-    print(f"Available slots: {available_slots}")
-    print(f"Occupied times: {occupied_times}")
     free_slots = []
     for slot in available_slots:
         if not any(slot == occupied_time for occupied_time in occupied_times):
@@ -399,12 +389,12 @@ def check_availability(request, employee_id):
     # Obtenemos la fecha desde los parámetros de la solicitud
     date_str = request.query_params.get('date')
     if not date_str:
-        return Response({'error': 'Date parameter is required'}, status=400)
+        return Response({'error': 'La fecha es obligatoria'}, status=400)
     
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+        return Response({'error': 'Formato de fecha inválido. Use AAAA-MM-DD.'}, status=400)
 
     # Llamamos a la función para obtener los horarios disponibles
     available_times = get_available_times(employee_id, date)
@@ -500,7 +490,6 @@ def create_appointment(request):
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time, estate="Pendiente").exists():
         return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
         
-    print("Validando disponibilidad de horario 1")
         
     #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
@@ -619,13 +608,10 @@ def create_appointment(request):
                     else:
                         exception11 = False
 
-            print("exceptions")
             if exceptions:
                 for exception in exceptions:
-                    print("pa ver si entla", exception)
                     if exception7:
                         if new_date >= exception.date_start and new_date <= exception.date_end:
-                            print("entré aunque no deberia entrar")
                             if final_time.time() <= exception.time_end and final_time.time() >= exception.time_start or appointment_start_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
                                 exception7 = True
                             else:
@@ -670,14 +656,6 @@ def create_appointment(request):
     end_date = "2024-11-20"
     
     try:
-        print("Creando cita")
-        print("Datos")
-        print("Cliente", client)
-        print("Empleado", employee)
-        print("Fecha", new_date)
-        print("Hora", time)
-        print("Establecimiento", establishment)
-        print("Estado", "Pendiente")
         appointment = Appointment.objects.create(
             client=client,
             employee=employee,
@@ -772,7 +750,6 @@ def create_appointment(request):
 
             recipients = [client.user.email, employee.user.email]
             send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
-            print("Correo enviado")
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 

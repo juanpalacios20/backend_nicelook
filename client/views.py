@@ -50,13 +50,13 @@ def client_appointment_history(request, client_id):
         appointments = Appointment.objects.filter(client=client).order_by('-date')
         
         if not appointments.exists():
-            return Response({'message': 'No appointments found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'No se han encontrado citas'}, status=status.HTTP_404_NOT_FOUND)
         
         serializer = appointmentSerializer(appointments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     except Client.DoesNotExist:
-        return Response({'error': 'Client not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
 @api_view(['GET'])
 def get_client(request, client_id):
@@ -66,7 +66,7 @@ def get_client(request, client_id):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     except Client.DoesNotExist:
-        return Response({'error': 'Client not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
 @api_view(['PUT'])
 def update_client(request, client_id):
@@ -87,7 +87,7 @@ def update_client(request, client_id):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     except Client.DoesNotExist:
-        return Response({'error': 'Client not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -114,7 +114,7 @@ class ClientLoginView(APIView):
 
             # Verificar si el correo electrónico está verificado
             if not token_info.get('email_verified'):
-                return Response({'error': 'Email not verified'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Correo electrónico no verificado'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Intentar obtener o crear el usuario y el objeto Client
             user, created = User.objects.get_or_create(email=email)
@@ -138,13 +138,13 @@ class ClientLoginView(APIView):
             user = authenticate(request, username=user.username, password=password)
             #user = authenticate(request, email= email, password=password)
             if not user:
-                return Response({'error': 'Invalid email or password'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Correo electrónico o contraseña inválidos'}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 client = Client.objects.get(user=user)
             except Client.DoesNotExist:
-                return Response({'error': 'Client account not found'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'error': 'No se ha encontrado la cuenta del cliente'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            return Response({'error': 'Provide either a Google token or email and password'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Proporcione un token de Google o un correo electrónico y una contraseña'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generar tokens de acceso (JWT)
         refresh = RefreshToken.for_user(user)

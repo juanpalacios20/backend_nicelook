@@ -24,7 +24,7 @@ def register(request):
     password = request.data.get('password')
     
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Este correo electronico ya ha sido registrado, prueba con otro'}, status=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(
         username=email,
@@ -51,12 +51,12 @@ def loginAdmin(request):
     password = request.data.get('password')
     
     if not email or not password:
-        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El Correo electronico y la contraseña son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
     
     user = User.objects.filter(email=email).first()
     
     if not user or not user.check_password(password):
-        return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Correo electrónico o contraseña inválidos'}, status=status.HTTP_401_UNAUTHORIZED)
     
     token = Token.objects.filter(user=user).first()
     if not token:

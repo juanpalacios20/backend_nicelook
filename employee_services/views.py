@@ -21,7 +21,7 @@ def employeeServicesList(request, employee_id):
         employee_services = EmployeeServices.objects.filter(employee=employee)
         
         if not employee_services.exists():
-            return Response({"message": "This employee has no assigned services."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "Este empleado no tiene servicios asignados."}, status=status.HTTP_404_NOT_FOUND)
         
         # Serializar los servicios
         serializer = employeeServicesSerializer(employee_services, many=True)
@@ -30,7 +30,7 @@ def employeeServicesList(request, employee_id):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     except Employee.DoesNotExist:
-        return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -48,12 +48,12 @@ def employeeServiceDelete(request, employee_id, service_id):
         service.delete()
 
         # Devolver la respuesta
-        return Response({"message": "Service successfully eliminated."}, status=status.HTTP_200_OK)
+        return Response({"message": "Servicio eliminado con éxito."}, status=status.HTTP_200_OK)
 
     except Employee.DoesNotExist:
-        return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except EmployeeServices.DoesNotExist:
-        return Response({"error": "Service not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Servicio no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e: 
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     

@@ -19,16 +19,16 @@ def uploadImage(request):
         image = request.FILES.get('image')
         code_product = request.data.get('code_product')
         if not id_establisment or not code_product or not image:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
         
         Product.objects.get(code = code_product)
         if ImageProduct.objects.filter(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(code = code_product)).exists():
-            return Response({'error': 'Image already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Imagen ya existente'}, status=status.HTTP_400_BAD_REQUEST)
         ImageProduct.objects.create(id_establisment=Establisment.objects.get(id=id_establisment),
                                         id_product=Product.objects.get(code = code_product),
                                         image=imageField)
-        return Response({'message': 'Image uploaded successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Imagen cargada correctamente'}, status=status.HTTP_201_CREATED)
         
         
     except Exception as e:
@@ -41,7 +41,7 @@ def getImageProduct(request):
         code_product = request.query_params.get('code_product')
         id_establisment = request.query_params.get('id_establisment')
         if not code_product or not id_establisment:   
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
 
         image = ImageProduct.objects.get(id_product = Product.objects.get(code = code_product), id_establisment=id_establisment)
         
@@ -64,13 +64,13 @@ def updateImageProduct(request):
         code_product = request.data.get('code_product')
         image = request.FILES.get('image')
         if not id_establisment or not code_product or not image:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         imageField = image.read()
 
         imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(code = code_product))
         imageProduct.image = imageField
         imageProduct.save()
-        return Response({'message': 'Image updated successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Imagen actualizada con éxito'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -82,9 +82,9 @@ def deleteImageProduct(request):
         code_product = request.query_params.get('code_product')
         id_image = request.data.get('id_image')
         if not id_establisment or not code_product or not id_image:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         imageProduct = ImageProduct.objects.get(id_establisment=Establisment.objects.get(id=id_establisment), id_product=Product.objects.get(code = code_product), id=id_image)
         imageProduct.delete()
-        return Response({'message': 'Image deleted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Imagen eliminada con éxito'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

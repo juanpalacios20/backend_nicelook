@@ -72,7 +72,7 @@ def setDurationService(request, employee_id):
         service_id = request.data.get('service_id')
         
         if not service_id:
-            return Response({"error": "Service ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "El ID del servicio es obligatorio"}, status=status.HTTP_400_BAD_REQUEST)
         
         service = Service.objects.get(id=service_id)
         
@@ -80,13 +80,13 @@ def setDurationService(request, employee_id):
         
         duration_str = request.data.get('duration')
         if not duration_str:
-            return Response({"error": "Duration is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "La Duración es obligatoria."}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             duration_time = datetime.strptime(duration_str, "%H:%M:%S")
             duration = timedelta(hours=duration_time.hour, minutes=duration_time.minute, seconds=duration_time.second)
         except ValueError:
-            return Response({"error": "Invalid duration format. Use HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Formato de duración no válido. Utilice HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
         
         employee_service.duration = duration
         employee_service.save()
@@ -111,13 +111,13 @@ def employeeAddService(request, employee_id):
         duration_str = request.data.get('duration')
 
         if not service_id or not duration_str:
-            return Response({"error": "Service ID and duration are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "El ID del servicio y la duración son obligatorios."}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             duration_time = datetime.strptime(duration_str, "%H:%M:%S")
             duration = timedelta(hours=duration_time.hour, minutes=duration_time.minute, seconds=duration_time.second)
         except ValueError:
-            return Response({"error": "Invalid duration format. Use HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Formato de duración no válido. Utilice HH:MM:SS."}, status=status.HTTP_400_BAD_REQUEST)
         
         service = Service.objects.get(id=service_id)
         if service.establisment.id != establisment_id:
@@ -328,7 +328,7 @@ def create_employee(request, establisment_id):
     try:
         validate_email(email)
     except ValidationError:
-        return Response({'error': 'Formato de email no válido.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Formato de Correo electronico no válido.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar teléfono
     try:
@@ -344,7 +344,7 @@ def create_employee(request, establisment_id):
 
     # Verificar si el email ya está registrado
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'El email ya está registrado.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'El Correo electronico ya ha sido registrado.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar agenda si se proporciona
 
@@ -477,7 +477,7 @@ def delete_photo(request, establisment_id, employee_id):
         return JsonResponse({'mensaje': 'La imagen se ha elimiando exitosamente.'}, status=200)
 
     except Establisment.DoesNotExist:
-        return JsonResponse({'error': 'Establishment not found'}, status=404)
+        return JsonResponse({'error': 'El establecimiento no ha sido encontrado'}, status=404)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -686,11 +686,11 @@ def history_appointments(request, employee_id):
         month = int(request.GET.get('month'))
         day = int(request.GET.get('day'))
         if not year or not month or not  day:
-            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El año, el mes y el día son parámetros obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
         appointments = Appointment.objects.filter(employee=employee,date__year=year,date__month=month,date__day=day).filter(Q(estate__icontains='Completada') | Q(estate__icontains='Cancelada')
 )
         if not appointments.exists(): 
-            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': "Las citas no existen" },status=status.HTTP_404_NOT_FOUND)
         info_appoiments = []
         total_earnings = 0
         for appointment in appointments:
@@ -717,7 +717,7 @@ def history_appointments(request, employee_id):
                 'rating': rSerializer.data['rating'],
             })
         print("total ganancias", total_earnings)
-        return Response({"appointments": info_appoiments, "earnings": total_earnings}, status=status.HTTP_200_OK)
+        return Response({"appointments": info_appoiments, "ganancias": total_earnings}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -729,10 +729,10 @@ def schedule_employee(request, employee_id):
         day = int(request.GET.get('day'))
         appointments_date = date(year, month, day) 
         if not year or not month or not  day:
-            return Response({'error': 'Year, month and day are required parameters'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El año, el mes y el día son parámetros obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
         appointments = Appointment.objects.filter(date = appointments_date, employee_id = employee_id, estate__icontains='Pendiente')
         if not appointments.exists():
-            return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': "Las citas no existen" },status=status.HTTP_404_NOT_FOUND)
         info_appoiments = []
         for appointment in appointments:
             services = []
@@ -770,7 +770,7 @@ class EmployeeLogin(APIView):
         auth_code = request.data.get('auth_code')
 
         if not auth_code:
-            return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El código de autorización es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
 
         # URL para obtener los tokens de Google
         token_url = 'https://oauth2.googleapis.com/token'
@@ -789,7 +789,7 @@ class EmployeeLogin(APIView):
         print(response)
         
         if response.status_code != 200:
-            return Response({'error': 'Failed to exchange authorization code for tokens', 'details': response.json()}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No se ha podido intercambiar el código de autorización por tokens.', 'details': response.json()}, status=status.HTTP_400_BAD_REQUEST)
 
         # Si la solicitud es exitosa, obtener los tokens
         tokens = response.json()
@@ -798,14 +798,14 @@ class EmployeeLogin(APIView):
 
 
         if not access_token:
-            return Response({'error': 'Access token not found in the response'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No se ha encontrado el token de acceso en el response'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Usar el access_token para obtener la información del usuario desde Google
         user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
         user_info_response = requests.get(user_info_url, headers={'Authorization': f'Bearer {access_token}'})
         
         if user_info_response.status_code != 200:
-            return Response({'error': 'Failed to retrieve user information from Google'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Error al recuperar la información del usuario de Google'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Datos del usuario
         user_data = user_info_response.json()
