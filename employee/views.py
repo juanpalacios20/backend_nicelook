@@ -500,7 +500,15 @@ def create_time(request, employee_id):
             date_start = date_start,
             date_end = date_end
         )
-        
+        #condición para que el dia final sea mayor que el dia inicial de manera obligatoria
+        if date_start > date_end:
+            return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        #if date_start < datetime.date.today():
+            #return Response({"error": "La fecha de inicio debe ser mayor o igual a la fecha actual"}, status=status.HTTP_400_BAD_REQUEST)
+        #condición para que el horario final sea mayor que el horario inicial de manera obligatoria
+        if time_start_day_one >= time_end_day_one:
+            return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+        #condición para que no se puedan crear dos horarios con la misma fecha
         if time:
             return Response({"error": "Ya hay un horario asignado para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -516,7 +524,27 @@ def create_time(request, employee_id):
             
             if not time_start_day_two or not time_end_day_two:
                 return Response({"error": "El horario del segundo turno es obligatorio si hay doble turno"}, status=status.HTTP_400_BAD_REQUEST)
-
+            #condición para que el horario final del segundo turno sea mayor 
+            #que el horario inicial del segundo turno de manera obligatoria
+            if time_start_day_two >= time_end_day_two:
+                return Response({"error": "El horario de inicio del segundo turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+            #condición para que el horario inicial del segundo turno sea mayor que el horario inicial del primer turno
+            #de manera obligatoria
+            if time_start_day_two <= time_start_day_one:
+                return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+            #condición para que el horario final del segundo turno sea mayor que el horario final del primer turno
+            #de manera obligatoria
+            if time_end_day_one >= time_start_day_two:
+                return Response({"error": "El horario de fin del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)  
+            #condición para que el horario final del segundo turno sea mayor que el horario final del primer turno
+            #de manera obligatoria
+            if time_end_day_two <= time_end_day_one:
+                return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            #condición para que el horario final del segundo turno sea mayor que el horario inicial del primer turno
+            #de manera obligatoria
+            if time_end_day_two <= time_start_day_one:
+                return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+                     
             Time.objects.create(
                 employee=employee,
                 double_day=double_day,
@@ -559,14 +587,128 @@ def update_time(request, employee_id):
         new_date_start = request.data.get('new_date_start')
         new_date_end = request.data.get('new_date_end')
         time = Time.objects.get(employee=employee_id, time_start_day_one=time_start_day_one, time_end_day_one=time_end_day_one, date_start=date_start, date_end=date_end)
-
-        time.double_day = double_day if double_day is not None else time.double_day
-        time.time_start_day_one = new_time_start_day_one if new_time_start_day_one is not None else time.time_start_day_one
-        time.time_end_day_one = new_time_end_day_one if new_time_end_day_one is not None else time.time_end_day_one
-        time.time_start_day_two = new_time_start_day_two if new_time_start_day_two is not None else time.time_start_day_two
-        time.time_end_day_two = new_time_end_day_two if new_time_end_day_two is not None else time.time_end_day_two
-        time.date_start = new_date_start if new_date_start is not None else time.date_start
-        time.date_end = new_date_end if new_date_end is not None else time.date_end
+        if not time:
+            return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        if new_time_start_day_one:
+            print("holis")
+            if new_time_end_day_one:
+                if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= datetime.strptime(new_time_end_day_one, '%H:%M').time():
+                    return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else: 
+                print("holis")
+                print(datetime.strptime(new_time_start_day_one, '%H:%M').time(), time.time_end_day_one)
+                if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= time.time_end_day_one:
+                    print("holis")
+                    return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            print("holis")
+            if time.double_day:
+                if new_time_start_day_two:
+                    if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= datetime.strptime(new_time_start_day_two, '%H:%M').time():
+                        return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= time.time_start_day_two:
+                        return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if new_time_end_day_two:
+                    if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= datetime.strptime(new_time_end_day_two, '%H:%M').time():
+                        return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if datetime.strptime(new_time_start_day_one, '%H:%M').time() >= time.time_end_day_two:
+                        return Response({"error": "El horario de inicio del primer turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+        print("aqui no es")
+        if new_time_end_day_one:
+            print("holas1")
+            if new_time_start_day_one:
+                print("holas2")
+                if datetime.strptime(new_time_end_day_one, '%H:%M').time() <= datetime.strptime(new_time_start_day_one, '%H:%M').time():
+                    print("holas3")
+                    return Response({"error": "El horario de fin del primer turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                print("holas4")
+                if datetime.strptime(new_time_end_day_one, '%H:%M').time() <= time.time_start_day_one:
+                    return Response({"error": "El horario de fin del primer turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            print("holas5")
+            if time.double_day:
+                print("holas6")
+                if new_time_start_day_two:
+                    print("aquitoy")
+                    if datetime.strptime(new_time_end_day_one, '%H:%M').time() >= time.time_start_day_two:
+                        return Response({"error": "El horario de fin del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if datetime.strptime(new_time_end_day_one, '%H:%M').time() >= time.time_start_day_two:
+                        return Response({"error": "El horario de fin del primer turno debe ser menor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)     
+                print("aquitoy2")
+                if datetime.strptime(new_time_end_day_one, '%H:%M').time() >= time.time_end_day_two:
+                    return Response({"error": "El horario de fin del primer turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if new_time_end_day_two :
+                        if datetime.strptime(new_time_end_day_one, '%H:%M').time() >= datetime.strptime(new_time_end_day_two, '%H:%M').time():
+                            return Response({"error": "El horario de fin del primer turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+        print("aqui no es2")
+        if new_time_start_day_two:
+            print("mevoyapelar")
+            if new_time_end_day_one:
+                print("mevoyapelar2")
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() <= datetime.strptime(new_time_end_day_one, '%H:%M').time():
+                    return Response({"error": "El horario de inicio del segundo turno debe ser mayor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() <= time.time_end_day_one:
+                    return Response({"error": "El horario de inicio del segundo turno debe ser menor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            print("mevoyapelar3")
+            if new_time_end_day_two:
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() >= datetime.strptime(new_time_end_day_two, '%H:%M').time():
+                    return Response({"error": "El horario de inicio del segundo turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() >= time.time_end_day_two:
+                    return Response({"error": "El horario de inicio del segundo turno debe ser menor que el horario de fin del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+            print("mevoyapelar4")
+            if new_time_start_day_one:
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() <= datetime.strptime(new_time_start_day_one, '%H:%M').time():
+                    return Response({"error": "El horario de inicio del segundo turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)        
+            else:
+                if datetime.strptime(new_time_start_day_two, '%H:%M').time() >= time.time_start_day_one:
+                    return Response({"error": "El horario de inicio del segundo turno debe ser menor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+        print("aqui no es3")
+        if new_time_end_day_two:
+            if new_time_start_day_two:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() <= datetime.strptime(new_time_start_day_two, '%H:%M').time():
+                    return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() <= time.time_start_day_two:
+                    return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de inicio del segundo turno"}, status=status.HTTP_400_BAD_REQUEST)
+            if new_time_start_day_one:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() <= datetime.strptime(new_time_start_day_one, '%H:%M').time():
+                    return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() <= time.time_start_day_one:
+                    return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de inicio del primer turno"}, status=status.HTTP_400_BAD_REQUEST) 
+            if new_time_end_day_one:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() >= datetime.strptime(new_time_end_day_one, '%H:%M').time():
+                    return Response({"error": "El horario de fin del segundo turno debe ser menor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if datetime.strptime(new_time_end_day_two, '%H:%M').time() <= time.time_end_day_one:
+                    return Response({"error": "El horario de fin del segundo turno debe ser mayor que el horario de fin del primer turno"}, status=status.HTTP_400_BAD_REQUEST)       
+        print("aqui no es4")
+        if new_date_start:
+            if datetime.strptime(new_date_start, "%Y-%m-%d").date() > time.date_end:
+                return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+            if new_date_end:
+                if datetime.strptime(new_date_start, "%Y-%m-%d").date() > datetime.strptime(new_date_end, "%Y-%m-%d").date():
+                    return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        print("aqui no es5")
+        if new_date_end:
+            if datetime.strptime(new_date_end, "%Y-%m-%d").date() < time.date_start:
+                return Response({"error": "La fecha de fin debe ser mayor que la fecha de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+            if new_date_start:
+                if datetime.strptime(new_date_end, "%Y-%m-%d").date() < datetime.strptime(new_date_start, "%Y-%m-%d").date():
+                    return Response({"error": "La fecha de fin debe ser mayor que la fecha de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+        time.double_day = double_day if double_day   else time.double_day
+        time.time_start_day_one = new_time_start_day_one if new_time_start_day_one else time.time_start_day_one
+        time.time_end_day_one = new_time_end_day_one if new_time_end_day_one else time.time_end_day_one
+        time.time_start_day_two = new_time_start_day_two if new_time_start_day_two else time.time_start_day_two
+        time.time_end_day_two = new_time_end_day_two if new_time_end_day_two else time.time_end_day_two
+        time.date_start = new_date_start if new_date_start else time.date_start
+        time.date_end = new_date_end if new_date_end else time.date_end
         time.save()
 
         return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
@@ -629,7 +771,7 @@ def create_exception(request, employee_id):
         time_start = request.data.get('time_start')
         time_end = request.data.get('time_end')
         employee = Employee.objects.get(id=employee_id)
-        
+        print("todoenorden1")
         exception = TimeException.objects.filter(
             employee_id = employee_id,
             date_start = start_date,
@@ -637,13 +779,21 @@ def create_exception(request, employee_id):
             time_start = time_start,
             time_end = time_end
         )
-        
+        print("todoenorden2")
         if not start_date or not time_start or not time_end:
             return Response({"error": "Los campos start_date, time_start y time_end son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
-        
+        print("todoenorden3")
         if exception:
             return Response({"error": "Ya hay una excepcion asignada para la fecha y hora seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
-        
+        print("todoenorden4")
+        if start_date > end_date:
+            return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        #if start_date < datetime.date.today():
+            #return Response({"error": "La fecha de inicio debe ser mayor o igual a la fecha actual"}, status=status.HTTP_400_BAD_REQUEST)
+        print("todoenorden5")
+        if time_start > time_end:
+            return Response({"error": "La hora de inicio debe ser menor que la hora de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        print("todoenorden6")
         if end_date and reason:
             TimeException.objects.create(
                 employee=employee,
@@ -653,6 +803,7 @@ def create_exception(request, employee_id):
                 time_start = time_start,
                 time_end = time_end,
             )
+        print("todoenorden7")
         if end_date and not reason:
             TimeException.objects.create(
                 employee=employee,
@@ -662,6 +813,7 @@ def create_exception(request, employee_id):
                 time_start = time_start,
                 time_end = time_end,
             )
+        print("todoenorden8")
         if not end_date and reason:
             TimeException.objects.create(
                 employee=employee,
@@ -671,6 +823,7 @@ def create_exception(request, employee_id):
                 time_start = time_start,
                 time_end = time_end,
             )
+        print("todoenorden9")
         if not end_date and not reason:
             TimeException.objects.create(
                 employee=employee,
@@ -703,20 +856,52 @@ def update_exception(request, employee_id):
         new_date_end = request.data.get('new_date_end')
         new_time_start = request.data.get('new_time_start')
         new_time_end = request.data.get('new_time_end')
-        if date_start and date_end:
-            exception = TimeException.objects.get(employee=employee_id, date_start=date_start, date_end=date_end)
-            if not new_date_start is None:
-                exception.date_start = new_date_start
-                exception.date_end = new_date_end
-            if not reason is None:
-                exception.reason = reason
-            if not new_time_start is None:
-                exception.time_start = time_start
-            if not new_time_end is None:
-                exception.time_end = time_end
-            exception.save()
-            print("exception:", exception.date_start, exception.date_end, exception.reason, exception.time_start, exception.time_end)
-            return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
+        if not date_start and not date_end:
+            return Response({"error": "Los campos date_start y date_end son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
+        if new_date_start:
+            if not new_date_end:
+                if new_date_start > date_end:
+                    return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if new_date_end is not None:
+                    if new_date_start > new_date_end:
+                        return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        if new_date_end:
+            if not new_date_start:
+                if new_date_end < date_start:
+                    return Response({"error": "La fecha de fin debe ser mayor que la fecha de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if new_date_start is not None:
+                    if new_date_end < new_date_start:
+                        return Response({"error": "La fecha de fin debe ser mayor que la fecha de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+        if new_time_start:
+            if not new_time_end:
+                if new_time_start > time_end:
+                    return Response({"error": "La hora de inicio debe ser menor que la hora de fin"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if new_time_end is not None:
+                    if new_time_start > new_time_end:
+                        return Response({"error": "La hora de inicio debe ser menor que la hora de fin"}, status=status.HTTP_400_BAD_REQUEST)
+        if new_time_end:
+            if not new_time_start:
+                if new_time_end < time_start:
+                    return Response({"error": "La hora de fin debe ser mayor que la hora de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if new_time_start is not None:
+                    if new_time_end < new_time_start:
+                        return Response({"error": "La hora de fin debe ser mayor que la hora de inicio"}, status=status.HTTP_400_BAD_REQUEST)
+        exception = TimeException.objects.get(employee=employee_id, date_start=date_start, date_end=date_end)
+        if not new_date_start is None:
+            exception.date_start = new_date_start
+            exception.date_end = new_date_end
+        if not reason is None:
+            exception.reason = reason
+        if not new_time_start is None:
+            exception.time_start = time_start
+        if not new_time_end is None:
+            exception.time_end = time_end
+        exception.save()
+        return Response({"success": "Horario actualizado exitosamente"}, status=status.HTTP_200_OK)
     except TimeException.DoesNotExist:
         return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
