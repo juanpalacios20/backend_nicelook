@@ -721,19 +721,23 @@ def update_time(request, employee_id):
 @api_view(['DELETE'])
 def delete_time(request, employee_id):
     try:
-        #necesario enviar estos campos para encontrar el horario que es 
-        date_start = request.query_params.get('date_start')
-        date_end = request.query_params.get('date_end')
-        time_start_day_one = request.query_params.get('time_start_day_one')
-        time_end_day_one = request.query_params.get('time_end_day_one')
-        time = Time.objects.filter(employee=employee_id, time_start_day_one=time_start_day_one, time_end_day_one=time_end_day_one, date_start=date_start, date_end=date_end).first()
-        if time:
-            time.delete()
-        else:
-            return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response({"success": "Horario eliminado exitosamente"}, status=status.HTTP_200_OK)
-    except Time.DoesNotExist:
-        return Response({"error": "Horario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        date = request.query_params.get('date')
+        employee = Employee.objects.get(id=employee_id)
+        if not date:
+            return Response({'error': 'La fecha del dia no laboral es requerida'}, status=status.HTTP_400_BAD_REQUEST)
+        if not employee:
+            return Response({'error': 'Empleado no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        TimeException.objects.create(
+            employee = employee,
+            date_start = date,
+            date_end = date,
+            reason = "Motivos personales",
+            time_start = datetime.strptime("00:00", '%H:%M').time(),
+            time_end = datetime.strptime("23:00", '%H:%M').time()
+        )    
+        return Response({"success": "Dia no laboral creado exitosamente"}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def get_time(request, employee_id):
@@ -998,7 +1002,7 @@ def schedule_employee(request, employee_id):
         return Response({"appointments": info_appoiments}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        
     
 import requests
 from rest_framework.views import APIView
@@ -1124,4 +1128,5 @@ class EmployeeLogin(APIView):
         
         if not receptionist and not employee:
             return Response({'error': 'No te hemos encontrado en la lista de profesionales de el establecimiento, contacta con ellos para resolver el problema'}, status=status.HTTP_404_NOT_FOUND)
-       
+
+
