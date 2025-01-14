@@ -63,9 +63,7 @@ def appointment_list(request):
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
-        print(day, month, year)
         appointments_date = date(year, month, day)
-        print(appointments_date)
         appointments = Appointment.objects.filter(date = appointments_date, establisment = id)
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
@@ -179,7 +177,7 @@ def reschedule(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ConnectionResetError:
-        print("Client disconnected unexpectedly")
+        
         return Response({"error": "Client disconnected unexpectedly"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -223,7 +221,7 @@ def update_google_calendar( appointment, time):
 
     # Datos para actualizar el evento
     event_id = appointment.event_id
-    print(event_id)  # Asegúrate de almacenar el ID del evento en tu modelo
+     # Asegúrate de almacenar el ID del evento en tu modelo
     if not event_id:
         logger.error("El appointment no tiene un 'event_id' asignado.")
         raise Exception("El appointment no tiene un 'event_id' asignado.")
@@ -260,7 +258,7 @@ def update_google_calendar( appointment, time):
             appointment.event_id = response['id']
             appointment.estate = "Pendiente"
             appointment.save()
-            print(appointment.estate)
+            
 
             # Preparar el correo de notificación
             subject = "Cita Reprogramada"
@@ -377,14 +375,12 @@ def get_available_times(employee_id, date):
     # Filtrar los horarios ocupados por citas ya existentes
     appointments = Appointment.objects.filter(employee_id=employee_id, time__date=date)
     occupied_times = [appointment.time.replace(tzinfo=None) for appointment in appointments]
-    print(f"Available slots: {available_slots}")
-    print(f"Occupied times: {occupied_times}")
     free_slots = []
     for slot in available_slots:
         if not any(slot == occupied_time for occupied_time in occupied_times):
             free_slots.append(slot)
 
-    print(f"Free slots: {free_slots}")
+    
     return free_slots
 
 
@@ -494,7 +490,7 @@ def create_appointment(request):
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time, estate="Pendiente").exists():
         return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
         
-    print("Validando disponibilidad de horario 1")
+    
         
     #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
@@ -576,7 +572,7 @@ def create_appointment(request):
         if exception6:
             return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
         
-    print("Validando disponibilidad de horario 2")
+    
     if appointments:
         for appointment in appointments:
             appointment_start_time = appointment.time
@@ -615,13 +611,13 @@ def create_appointment(request):
                     else:
                         exception11 = False
 
-            print("exceptions")
+            
             if exceptions:
                 for exception in exceptions:
-                    print("pa ver si entla", exception)
+                    
                     if exception7:
                         if new_date >= exception.date_start and new_date <= exception.date_end:
-                            print("entré aunque no deberia entrar")
+                            
                             if final_time.time() <= exception.time_end and final_time.time() >= exception.time_start or appointment_start_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
                                 exception7 = True
                             else:
@@ -647,7 +643,7 @@ def create_appointment(request):
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    print("Validando disponibilidad de horario 3")
+    
     refresh_access_token(employee.token, employee_id)
     
     credentials = Credentials(
@@ -666,14 +662,7 @@ def create_appointment(request):
     end_date = "2024-11-20"
     
     try:
-        print("Creando cita")
-        print("Datos")
-        print("Cliente", client)
-        print("Empleado", employee)
-        print("Fecha", new_date)
-        print("Hora", time)
-        print("Establecimiento", establishment)
-        print("Estado", "Pendiente")
+       
         appointment = Appointment.objects.create(
             client=client,
             employee=employee,
@@ -683,11 +672,11 @@ def create_appointment(request):
             estate='Pendiente',
             method='Efectivo',
         )
-        print("Cita creada", appointment)
+        
     except Exception as e:
         return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
     
-    print("Validando disponibilidad de horario 4")
+    
     try:
         for service in services_list:
             appointment.services.add(service) 
@@ -743,7 +732,7 @@ def create_appointment(request):
         }, status=500)
         
         else:
-            print("Evento creado")
+            
             event_id = response.json().get('id')
             appointment.event_id = event_id
             appointment.save()
@@ -768,7 +757,7 @@ def create_appointment(request):
 
             recipients = [client.user.email, employee.user.email]
             send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
-            print("Correo enviado")
+            
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
@@ -855,7 +844,7 @@ def cancel_google_calendar_event(appointment, user):
         )
         service = build('calendar', 'v3', credentials=credentials)
         service.events().delete(calendarId='primary', eventId=appointment.event_id).execute()
-        print(f"Evento con ID {appointment.event_id} cancelado exitosamente.")
+        
         subject = "Cita cancelada"
         message = (
             f"Hola,\n\n"
@@ -885,7 +874,7 @@ def client_cancel_appointment(request):
         
         # Obtener la hora actual con zona horaria
         actual_datetime = datetime.now(colombia_tz)
-        print(f"Hora actual en Colombia: {actual_datetime}")
+        
         
         # Asegúrate de que `appointment.time` sea timezone-aware
         if appointment.time.tzinfo is None:
@@ -895,7 +884,7 @@ def client_cancel_appointment(request):
             # Si ya tiene zona horaria, lo usamos directamente
             appointment_datetime = appointment.time
         
-        print(f"Hora de la cita: {appointment_datetime}")
+        
         
         # Verifica si faltan más de 1 hora
         if appointment_datetime - actual_datetime <= timedelta(hours=1):
