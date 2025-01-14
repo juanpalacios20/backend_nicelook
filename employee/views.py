@@ -771,59 +771,93 @@ def create_exception(request, employee_id):
             date_end = end_date
         )
         
+        exception3 = TimeException.objects.filter(
+            employee_id = employee_id,
+            date_start = start_date,
+            date_end = start_date,
+            time_start = datetime.strptime("00:00", '%H:%M').time(),
+            time_end = datetime.strptime("23:00", '%H:%M').time()
+        )
+        
         if not start_date or not time_start or not time_end:
             return Response({"error": "Los campos start_date, time_start y time_end son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
         if exception:
             return Response({"error": "Ya hay una excepcion asignada para la fecha y hora seleccionada"}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        #como exception2 no tiene una funcion o atributo lenght, tuve que hacerlo manualmente
         contador = 0
         for exception in exception2:
             contador += 1
         if contador == 2:
-            return Response({"error": "Ya hay dos excepciones asignadas para la fecha seleccionada"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Limite de excepciones alcanzado"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if exception3:
+            return Response({"error": "El dia seleccionado ya ha sido definido como dia no laboral"}, status=status.HTTP_400_BAD_REQUEST)
         if start_date > end_date:
             return Response({"error": "La fecha de inicio debe ser menor que la fecha de fin"}, status=status.HTTP_400_BAD_REQUEST)
-        #if start_date < datetime.date.today():
-            #return Response({"error": "La fecha de inicio debe ser mayor o igual a la fecha actual"}, status=status.HTTP_400_BAD_REQUEST)
-
         if time_start >= time_end:
             return Response({"error": "La hora de inicio debe ser menor que la hora de fin"}, status=status.HTTP_400_BAD_REQUEST)
-        if end_date and reason:
-            TimeException.objects.create(
-                employee=employee,
-                date_start = start_date,
-                date_end = end_date,
-                reason = reason,
-                time_start = time_start,
-                time_end = time_end,
+        
+        #este for se leera solamente si hay más de una excepcion en el dia 
+        #aqui estabna bien
+        if contador == 1:
+            for exception in exception2:
+                if not exception.time_start >= datetime.strptime(time_end, '%H:%M').time() or not exception.time_end >= datetime.strptime(time_start, '%H:%M').time():
+                    if exception.time_start <= datetime.strptime(time_start, '%H:%M').time() and exception.time_end >= datetime.strptime(time_end, '%H:%M').time():
+                        TimeException.objects.create(
+                            employee=employee,
+                            date_start = start_date,
+                            date_end = end_date if end_date else start_date,
+                            reason = reason if reason else "Motivos personales",
+                            time_start = exception.time_start,
+                            time_end = exception.time_end,
+                            
+                        )
+                        exception.delete()
+                        return Response({"success": "Excepcion creada exitosamente"}, status=status.HTTP_201_CREATED)
+                    if exception.time_start >= datetime.strptime(time_start, '%H:%M').time() and exception.time_end <= datetime.strptime(time_end, '%H:%M').time():
+                        TimeException.objects.create(
+                            employee=employee,
+                            date_start = start_date,
+                            date_end = end_date if end_date else start_date,
+                            reason = reason if reason else "Motivos personales",
+                            time_start = time_start,
+                            time_end = time_end,
+                    )
+                        exception.delete()
+                        return Response({"success": "Excepcion creada exitosamente"}, status=status.HTTP_201_CREATED)
+                    if exception.time_start <= datetime.strptime(time_start, '%H:%M').time() and exception.time_end <= datetime.strptime(time_end, '%H:%M').time():
+                        TimeException.objects.create(
+                            employee=employee,
+                            date_start = start_date,
+                            date_end = end_date if end_date else start_date,
+                            reason = reason if reason else "Motivos personales",
+                            time_start = exception.time_start,
+                            time_end = time_end,
+                        )
+                        exception.delete()
+                        return Response({"success": "Excepcion creada exitosamente"}, status=status.HTTP_201_CREATED)
+                    if exception.time_start >= datetime.strptime(time_start, '%H:%M').time() and exception.time_end >= datetime.strptime(time_end, '%H:%M').time():
+                        TimeException.objects.create(
+                            employee=employee,
+                            date_start = start_date,
+                            date_end = end_date if end_date else start_date,
+                            reason = reason if reason else "Motivos personales",
+                            time_start = time_start,
+                            time_end = exception.time_end,
+                    )
+                        exception.delete()
+                        return Response({"success": "Excepcion creada exitosamente"}, status=status.HTTP_201_CREATED)    
+        
+        TimeException.objects.create(
+            employee=employee,
+            date_start = start_date,
+            date_end = end_date if end_date else start_date,
+            reason = reason if reason else "Motivos personales",
+            time_start = time_start,
+            time_end = time_end,
             )
-        if end_date and not reason:
-            TimeException.objects.create(
-                employee=employee,
-                date_start = start_date,
-                date_end = end_date,
-                reason = "Motivos personales",
-                time_start = time_start,
-                time_end = time_end,
-            )
-        if not end_date and reason:
-            TimeException.objects.create(
-                employee=employee,
-                date_start = start_date,
-                date_end = end_date,
-                reason = reason,
-                time_start = time_start,
-                time_end = time_end,
-            )
-        if not end_date and not reason:
-            TimeException.objects.create(
-                employee=employee,
-                date_start = start_date,
-                date_end = end_date,
-                reason = "Motivos personales",
-                time_start = time_start,
-                time_end = time_end,
-            )
-        return Response({"success": "Excepcion de horario creado exitosamente"}, status=status.HTTP_201_CREATED)
+        return Response({"success": "Excepcion creada exitosamente"}, status=status.HTTP_201_CREATED)
     
     except Employee.DoesNotExist:
         return Response({"error": "Empleado no encontrado"}, status=status.HTTP_404_NOT_FOUND)
