@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
-from pathlib import Path 
+from pathlib import Path
+import dj_database_url 
 
 
 
@@ -27,10 +28,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Ahora usa config para obtener tu clave secreta
-SECRET_KEY = 'django-insecure-7pdxf=j1!sqj7&z7&hszn6pp=(*+8kyxttqdu$e0+#fm8@$9at'
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -118,14 +119,7 @@ WSGI_APPLICATION = 'nicelook_api.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'nicelook_db',
-        'USER': 'postgres',
-        'PASSWORD': 'serenity',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+     'default': dj_database_url.config(default= os.environ.get('DATABASE_URL'))
 }
 
 
@@ -182,6 +176,9 @@ CORS_ALLOWED_ORIGINS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
 
 
 REST_FRAMEWORK = {
@@ -199,8 +196,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nicelooknk2024@gmail.com'  # Cambia por tu correo de Gmail
-EMAIL_HOST_PASSWORD = 'hnkr olbh iube qllx'    # Cambia por tu contraseña de Gmail o una App Password si tienes 2FA habilitado
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER') # Cambia por tu correo de Gmail
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')    # Cambia por tu contraseña de Gmail o una App Password si tienes 2FA habilitado
 # Configuración para permitir inicio de sesión a través de Google
 
 
