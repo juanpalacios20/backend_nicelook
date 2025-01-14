@@ -19,7 +19,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import date
 from datetime import datetime
-from schedule.models import Time
+from schedule.models import Time, TimeException
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -63,9 +63,7 @@ def appointment_list(request):
         day = request.data.get('day')
         month = request.data.get('month')
         year = request.data.get('year')
-        print(day, month, year)
         appointments_date = date(year, month, day)
-        print(appointments_date)
         appointments = Appointment.objects.filter(date = appointments_date, establisment = id)
         if not appointments.exists():
             return Response({'error': "Appointments doesn't exist" },status=status.HTTP_404_NOT_FOUND)
@@ -89,6 +87,7 @@ def reschedule(request):
         month = request.data.get('month')
         year = request.data.get('year')
         time = request.data.get('time')
+
         if not all([id_appointment, year, month, day, time]):
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -96,22 +95,6 @@ def reschedule(request):
         new_date = date(year=int(year), month=int(month), day=int(day))
         new_time = datetime(year=int(year), month=int(month), day=int(day),
                             hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
-        
-        day_name = new_date.strftime('%a')
-        if new_date.weekday() == 0:
-            day_name = "Lun"
-        elif new_date.weekday() == 1:
-            day_name = "Mar"
-        elif new_date.weekday() == 2:
-            day_name = "Mie"
-        elif new_date.weekday() == 3:
-            day_name = "Jue"
-        elif new_date.weekday() == 4:
-            day_name = "Vie"
-        elif new_date.weekday() == 5:
-            day_name = "Sab"
-        elif new_date.weekday() == 6:
-            day_name = "Dom"
 
         # Obtener la cita existente
         try:
@@ -121,41 +104,52 @@ def reschedule(request):
 
         employee = appointment.employee
         times = Time.objects.filter(employee=employee)
+        exceptions = TimeException.objects.filter(employee=employee, date_start__lte=new_date, date_end__gte=new_date)
         appointments = Appointment.objects.filter(employee=employee, date=new_date).exclude(id=id_appointment)
 
         # Verificar duración total de los servicios
         services = appointment.services.all()
         total_duration = sum([EmployeeServices.objects.get(employee=employee, service=service).duration for service in services], timedelta())
-
         end_time = new_time + total_duration
 
+        # Validar excepciones laborales
+        if exceptions.exists():
+            for exception in exceptions:
+                if exception.time_start and exception.time_end:
+                    exception_start = datetime.combine(new_date, exception.time_start)
+                    exception_end = datetime.combine(new_date, exception.time_end)
 
-        # Validar día laboral
+                    if (new_time >= exception_start and new_time < exception_end) or \
+                       (end_time > exception_start and end_time <= exception_end):
+                        return Response({"error": "El profesional no está disponible en este horario debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"error": "El profesional no está disponible en esta fecha debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
         
-        print("day_name", day_name)
-        if not any(day_name.lower() in [day.lower() for day in time_entry.working_days] for time_entry in times):
-            print("the employee does not work on this day")
-            return Response({"error": "El profesional no trabaja en este dia"}, status=status.HTTP_400_BAD_REQUEST)
+       
 
         # Validar horario laboral
+        is_within_schedule = False
         for time_entry in times:
-            start_hour_t1 = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
-            end_hour_t1 = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
-            if time_entry.time_start_day_two and time_entry.time_end_day_two:
-                start_hour_t2 = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
-                end_hour_t2 = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
+            if new_date < time_entry.date_start or new_date > time_entry.date_end:
+                return Response({"error": "el profesional no tiene horario para este dia"}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_hour_t1 = datetime.combine(new_date, time_entry.time_start_day_one)
+            end_hour_t1 = datetime.combine(new_date, time_entry.time_end_day_one)
+
+            if time_entry.double_day:
+                start_hour_t2 = datetime.combine(new_date, time_entry.time_start_day_two)
+                end_hour_t2 = datetime.combine(new_date, time_entry.time_end_day_two)
             else:
                 start_hour_t2 = end_hour_t2 = None
 
-            if (new_time.time() < start_hour_t1 or new_time.time() >= end_hour_t1) and \
-               (not start_hour_t2 or (new_time.time() < start_hour_t2 or new_time.time() >= end_hour_t2)):
-                print("Appointment time is outside of working hours")
-                return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
+            if (start_hour_t1 <= new_time < end_hour_t1 or
+                (start_hour_t2 and start_hour_t2 <= new_time < end_hour_t2)) and \
+               (end_time <= end_hour_t1 or (start_hour_t2 and end_time <= end_hour_t2)):
+                is_within_schedule = True
+                break
 
-            if (end_time.time() > end_hour_t1 and (not start_hour_t2 or end_time.time() <= start_hour_t2)) or \
-               (end_time.time() > end_hour_t2):
-                print("Appointment duration exceeds working hours")
-                return Response({"error": "Duración de la cita excede el horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
+        if not is_within_schedule:
+            return Response({"error": "Cita fuera del horario del profesional"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar conflictos con otras citas
         for existing_appointment in appointments:
@@ -166,8 +160,7 @@ def reschedule(request):
 
             if (new_time >= existing_start_time and new_time < existing_end_time) or \
                (end_time > existing_start_time and end_time <= existing_end_time):
-                return Response({"error": "Conflicto con otra cita ya programada"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Conflicto con otra cita ya programada"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Actualizar la cita
         appointment.date = new_date
@@ -177,15 +170,14 @@ def reschedule(request):
         # Enviar notificaciones y actualizar en Google Calendar
         refresh_access_token(employee.token, employee.id)
         update_google_calendar(appointment, new_time)
-
         send_email_notification(appointment)
 
         return Response({"success": "Appointment rescheduled successfully"}, status=status.HTTP_200_OK)
-    
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ConnectionResetError:
-        print("Client disconnected unexpectedly")
+        
         return Response({"error": "Client disconnected unexpectedly"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -229,7 +221,7 @@ def update_google_calendar( appointment, time):
 
     # Datos para actualizar el evento
     event_id = appointment.event_id
-    print(event_id)  # Asegúrate de almacenar el ID del evento en tu modelo
+     # Asegúrate de almacenar el ID del evento en tu modelo
     if not event_id:
         logger.error("El appointment no tiene un 'event_id' asignado.")
         raise Exception("El appointment no tiene un 'event_id' asignado.")
@@ -266,7 +258,7 @@ def update_google_calendar( appointment, time):
             appointment.event_id = response['id']
             appointment.estate = "Pendiente"
             appointment.save()
-            print(appointment.estate)
+            
 
             # Preparar el correo de notificación
             subject = "Cita Reprogramada"
@@ -363,16 +355,16 @@ def generate_time_slots(start_time, end_time, slot_duration=timedelta(minutes=60
 
 def get_available_times(employee_id, date):
     # Filtra los registros de tiempo del empleado y verifica el estado
-    time_entries = Time.objects.filter(employee_id=employee_id, state=True)
+    time_entries = Time.objects.filter(employee_id=employee_id)
     available_slots = []
 
     for entry in time_entries:
         # Comprueba si el día solicitado está en los días laborables del empleado
-        if date.strftime("%A") in entry.working_days:
+        #if date.strftime("%A") in entry.working_days:
             # Genera los horarios del primer turno del día
-            start_time = datetime.combine(date, entry.time_start_day_one)
-            end_time = datetime.combine(date, entry.time_end_day_one)
-            available_slots += generate_time_slots(start_time, end_time)
+           # start_time = datetime.combine(date, entry.time_start_day_one)
+           # end_time = datetime.combine(date, entry.time_end_day_one)
+           # available_slots += generate_time_slots(start_time, end_time)
 
             # Si el empleado trabaja en dos turnos
             if entry.double_day:
@@ -383,14 +375,12 @@ def get_available_times(employee_id, date):
     # Filtrar los horarios ocupados por citas ya existentes
     appointments = Appointment.objects.filter(employee_id=employee_id, time__date=date)
     occupied_times = [appointment.time.replace(tzinfo=None) for appointment in appointments]
-    print(f"Available slots: {available_slots}")
-    print(f"Occupied times: {occupied_times}")
     free_slots = []
     for slot in available_slots:
         if not any(slot == occupied_time for occupied_time in occupied_times):
             free_slots.append(slot)
 
-    print(f"Free slots: {free_slots}")
+    
     return free_slots
 
 
@@ -468,6 +458,7 @@ def create_appointment(request):
         employee = Employee.objects.get(id=employee_id)
         client = Client.objects.get(id=client_id)
         times = Time.objects.filter(employee=employee)
+        exceptions = TimeException.objects.filter(employee=employee)
         establishment = Establisment.objects.get(employee=employee)
     except Employee.DoesNotExist:
         return Response({'error': 'Empleado no encontrado.'}, status=404)
@@ -498,81 +489,161 @@ def create_appointment(request):
     
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time, estate="Pendiente").exists():
         return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    day_date = " "
-    if new_date.weekday() == 0:
-        day_date = "Lun"
-    elif new_date.weekday() == 1:
-        day_date = "Mar"
-    elif new_date.weekday() == 2:
-        day_date = "Mie"
-    elif new_date.weekday() == 3:
-        day_date = "Jue"
-    elif new_date.weekday() == 4:
-        day_date = "Vie"
-    elif new_date.weekday() == 5:
-        day_date = "Sab"
-    elif new_date.weekday() == 6:
-        day_date = "Dom"
         
-    print("Validando disponibilidad de horario 1")
+    
         
     #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
-        for time_entry in times:
-            start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()
-            
-            end_hour_t1 = time_entry.time_end_day_one = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
+        exception1 = True
+        exception2 = True
+        exception3 = True
+        exception4 = True
+        exception5 = True
+        exception6 = True
+        exception7 = True
+        exception8 = True
+        exception9 = True
+        exception10 = True
+        exception11 = True
         
+        for time_entry in times:
+            start_hour_t1 = time_entry.time_start_day_one = datetime.strptime(str(time_entry.time_start_day_one), '%H:%M:%S').time()  
+            end_hour_t1 = time_entry.time_end_day_one = datetime.strptime(str(time_entry.time_end_day_one), '%H:%M:%S').time()
             if time_entry.time_start_day_two:
                 start_hour_t2 = time_entry.time_start_day_two = datetime.strptime(str(time_entry.time_start_day_two), '%H:%M:%S').time()
                 end_hour_t2 = time_entry.time_end_day_two = datetime.strptime(str(time_entry.time_end_day_two), '%H:%M:%S').time()
             
-            if day_date.lower() not in [d.lower() for d in time_entry.working_days]:
-                return Response({"error": "No es posible agendar una cita en un dia que no trabaja el artista"}, status=status.HTTP_400_BAD_REQUEST)
-            
+            if exception1:
+                if int(time_entry.date_end.month) < int(new_date.month) and int(time_entry.date_end.day) < int(new_date.day) or int(time_entry.date_end.year) < int(new_date.year) or int(new_date.month) >= int(time_entry.date_end.month) + 2:
+                    exception1 = True
+                else:
+                    exception1 = False
+            if exception2:
+                if time_entry.date_end < new_date or time_entry.date_start > new_date:
+                    exception2 = True
+                else:
+                    exception2 = False
             if time_entry.double_day:
-                if time.time() < start_hour_t1:
-                    return Response({"error": "La cita no puede empezar antes de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
-                
-                if time.time() >= end_hour_t2:
-                    return Response({"error": "La cita no puede empezar despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
-                
-                if time.time() >= end_hour_t1 and time.time() < start_hour_t2:
-                    return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+                if exception3:
+                    if time.time() < start_hour_t1:
+                        exception3 = True
+                    else:
+                        exception3 = False
+                if exception4:
+                    if time.time() >= end_hour_t2:
+                        exception4 = True
+                    else:
+                        exception4 = False
+                if exception5:
+                    if time.time() >= end_hour_t1 and time.time() < start_hour_t2:
+                        exception5 = True
+                    else:
+                        exception5 = False
+            else:
+                exception3 = False
+                exception4 = False
+                exception5 = False
+            if exceptions:
+                for exception in exceptions:
+                    if exception6:
+                        if exception.date_end:
+                            if exception.date_start <= new_date and exception.date_end >= new_date:
+                                exception6 = True
+                            else:
+                                exception6 = False
+                        else:
+                            if exception.date_start == new_date:
+                                exception6 = True
+                            else:
+                                exception6 = False
+            else:
+                exception6 = False
 
+        if exception1:
+            return Response({"error": "La cita no puede ser agendada porque el artista no tiene turno ese dia pero tienes la opción de solicitar turno con el artista."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception2:
+            return Response({"error": "La cita no puede ser agendada porque el artista no tiene turno ese dia."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception3:
+            return Response({"error": "La cita no puede empezar antes de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception4:
+            return Response({"error": "La cita no puede empezar despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception5:
+            return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception6:
+            return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
+        
     
-    print("Validando disponibilidad de horario 2")
-    
-    for appointment in appointments:
-        appointment_start_time = appointment.time
-        
-        for service in appointment.services.all():
-            services = EmployeeServices.objects.filter(employee=employee_id, service=service)
-        duration_total = timedelta()
-        
-        for service in services:
-            duration_total = service.duration
+    if appointments:
+        for appointment in appointments:
+            appointment_start_time = appointment.time
             
-        appointment_end_time = (appointment.time + duration_total)
-        
-        if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
-            return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
-            return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        for time1 in times:
-            if final_time.time() >= time1.time_end_day_two:
-                return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
+            for service in appointment.services.all():
+                services = EmployeeServices.objects.filter(employee=employee_id, service=service)
+            duration_total = timedelta()
             
-            if final_time.time() >= time1.time_end_day_one:
-                return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            for service in services:
+                duration_total = service.duration
+                
+            appointment_end_time = (appointment.time + duration_total)
+            
+            if exception8:
+                if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
+                    exception8 = True
+                else:
+                    exception8 = False
+                
+            if exception9:
+                if final_time.time() > appointment_start_time.time() and final_time.time() <= appointment_end_time.time():
+                    exception9 = True
+                else:
+                    exception9 = False
+            
+            for time1 in times:
+                if exception10:
+                    if final_time.time() >= time1.time_end_day_two:
+                        exception10 = True
+                    else:
+                        exception10 = False
+                    
+                if exception11:
+                    if final_time.time() >= time1.time_end_day_one:
+                        exception11 = True
+                    else:
+                        exception11 = False
+
+            
+            if exceptions:
+                for exception in exceptions:
+                    
+                    if exception7:
+                        if new_date >= exception.date_start and new_date <= exception.date_end:
+                            
+                            if final_time.time() <= exception.time_end and final_time.time() >= exception.time_start or appointment_start_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
+                                exception7 = True
+                            else:
+                                exception7 = False
+            else:
+                exception7 = False
+    else: 
+        exception7 = False
+        exception8 = False
+        exception9 = False
+        exception10 = False
+        exception11 = False
+    if exception7:
+        return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
+    if exception8:
+        return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
+    if exception9:
+        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
+    if exception10:
+        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
+    if exception11:
+        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    print("Validando disponibilidad de horario 3")
+    
     refresh_access_token(employee.token, employee_id)
     
     credentials = Credentials(
@@ -591,14 +662,7 @@ def create_appointment(request):
     end_date = "2024-11-20"
     
     try:
-        print("Creando cita")
-        print("Datos")
-        print("Cliente", client)
-        print("Empleado", employee)
-        print("Fecha", new_date)
-        print("Hora", time)
-        print("Establecimiento", establishment)
-        print("Estado", "Pendiente")
+       
         appointment = Appointment.objects.create(
             client=client,
             employee=employee,
@@ -608,11 +672,11 @@ def create_appointment(request):
             estate='Pendiente',
             method='Efectivo',
         )
-        print("Cita creada", appointment)
+        
     except Exception as e:
         return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
     
-    print("Validando disponibilidad de horario 4")
+    
     try:
         for service in services_list:
             appointment.services.add(service) 
@@ -668,7 +732,7 @@ def create_appointment(request):
         }, status=500)
         
         else:
-            print("Evento creado")
+            
             event_id = response.json().get('id')
             appointment.event_id = event_id
             appointment.save()
@@ -676,16 +740,16 @@ def create_appointment(request):
             message = (
                 f"Hola,\n\n"
                 f"Se ha agendado una cita en {establishment.name}. Aquí tienes los detalles:\n\n"
-                f"**Cliente:** {client.user.first_name} {client.user.last_name}\n"
-                f"**Correo del cliente:** {client.user.email}\n\n"
-                f"**Profesional:** {employee.user.first_name} {employee.user.last_name}\n"
-                f"**Correo del profesional:** {employee.user.email}\n\n"
-                f"**Servicios:**\n{services_details}\n\n"
-                f"**Precio total:** ${appointment.total_price}\n\n"
-                f"**Establecimiento:** {establishment.name}\n"
-                f"**Dirección:** {establishment.address}\n\n"
-                f"**Fecha:** {new_date.strftime('%Y-%m-%d')}\n"
-                f"**Hora:** {request.data.get('time')}\n\n"
+                f"Cliente: {client.user.first_name} {client.user.last_name}\n"
+                f"Correo del cliente: {client.user.email}\n\n"
+                f"Profesiona {employee.user.first_name} {employee.user.last_name}\n"
+                f"Correo del profesional: {employee.user.email}\n\n"
+                f"Servicios:\n{services_details}\n\n"
+                f"Precio total: ${appointment.total_price}\n\n"
+                f"Establecimiento: {establishment.name}\n"
+                f"Dirección: {establishment.address}\n\n"
+                f"Fecha: {new_date.strftime('%Y-%m-%d')}\n"
+                f"Hora: {request.data.get('time')}\n\n"
                 "Si tienes alguna pregunta, no dudes en contactarnos.\n\n"
                 "Atentamente,\n"
                 "Equipo de Nicelook"
@@ -693,7 +757,7 @@ def create_appointment(request):
 
             recipients = [client.user.email, employee.user.email]
             send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
-            print("Correo enviado")
+            
     except Exception as e:
         return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
 
@@ -780,7 +844,7 @@ def cancel_google_calendar_event(appointment, user):
         )
         service = build('calendar', 'v3', credentials=credentials)
         service.events().delete(calendarId='primary', eventId=appointment.event_id).execute()
-        print(f"Evento con ID {appointment.event_id} cancelado exitosamente.")
+        
         subject = "Cita cancelada"
         message = (
             f"Hola,\n\n"
@@ -810,7 +874,7 @@ def client_cancel_appointment(request):
         
         # Obtener la hora actual con zona horaria
         actual_datetime = datetime.now(colombia_tz)
-        print(f"Hora actual en Colombia: {actual_datetime}")
+        
         
         # Asegúrate de que `appointment.time` sea timezone-aware
         if appointment.time.tzinfo is None:
@@ -820,7 +884,7 @@ def client_cancel_appointment(request):
             # Si ya tiene zona horaria, lo usamos directamente
             appointment_datetime = appointment.time
         
-        print(f"Hora de la cita: {appointment_datetime}")
+        
         
         # Verifica si faltan más de 1 hora
         if appointment_datetime - actual_datetime <= timedelta(hours=1):
