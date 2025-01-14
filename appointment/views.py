@@ -126,10 +126,15 @@ def reschedule(request):
                         return Response({"error": "El profesional no está disponible en este horario debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
                 else:
                     return Response({"error": "El profesional no está disponible en esta fecha debido a una excepción."}, status=status.HTTP_400_BAD_REQUEST)
+        
+       
 
         # Validar horario laboral
         is_within_schedule = False
         for time_entry in times:
+            if new_date < time_entry.date_start or new_date > time_entry.date_end:
+                return Response({"error": "el profesional no tiene horario para este dia"}, status=status.HTTP_400_BAD_REQUEST)
+
             start_hour_t1 = datetime.combine(new_date, time_entry.time_start_day_one)
             end_hour_t1 = datetime.combine(new_date, time_entry.time_end_day_one)
 
@@ -568,6 +573,8 @@ def create_appointment(request):
             return Response({"error": "La cita no puede empezar despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
         if exception5:
             return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
+        if exception6:
+            return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
         
     print("Validando disponibilidad de horario 2")
     if appointments:
