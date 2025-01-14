@@ -119,7 +119,7 @@ WSGI_APPLICATION = 'nicelook_api.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default='postgresql://sebas:CZf46vg5rQRlOFsAAj34f4u6hfIAw0Hw@dpg-cu3c2k9opnds73854h40-a.oregon-postgres.render.com/nicelook_db')
+     'default': dj_database_url.config(default= os.environ.get('DATABASE_URL'))
 }
 
 
