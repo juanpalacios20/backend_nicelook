@@ -700,7 +700,7 @@ def create_appointment(request):
                 'summary': f'Cita en {establishment.name}',
                 'description': event_description,
                 'start': {
-                    'dateTime': f"{new_date}T{request.data.get("time")}:00",
+                    'dateTime': f"{new_date}T{request.data.get('time')}:00",
                     'timeZone': 'America/Bogota',
                 },
                 'end': {
