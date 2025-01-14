@@ -727,6 +727,9 @@ def delete_time(request, employee_id):
             return Response({'error': 'La fecha del dia no laboral es requerida'}, status=status.HTTP_400_BAD_REQUEST)
         if not employee:
             return Response({'error': 'Empleado no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        exception = TimeException.objects.filter(employee=employee, date_start=date, date_end=date, time_start=datetime.strptime("00:00", '%H:%M').time(), time_end=datetime.strptime("23:00", '%H:%M').time()).first()
+        if exception:
+            return Response({'error': 'Dia no laboral ya creado'}, status=status.HTTP_400_BAD_REQUEST)
         TimeException.objects.create(
             employee = employee,
             date_start = date,
@@ -734,7 +737,8 @@ def delete_time(request, employee_id):
             reason = "Motivos personales",
             time_start = datetime.strptime("00:00", '%H:%M').time(),
             time_end = datetime.strptime("23:00", '%H:%M').time()
-        )    
+        )   
+         
         return Response({"success": "Dia no laboral creado exitosamente"}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
