@@ -10,9 +10,21 @@ class Time (models.Model):
     time_start_day_two = models.TimeField(null=True)
     time_end_day_two = models.TimeField(null=True)
     double_day = models.BooleanField()
-    state = models.BooleanField()
-    working_days = ArrayField(models.CharField(max_length=10), blank=True, null=True)
+    date_start = models.DateField()
+    date_end = models.DateField()
     
     
     def __str__(self):
         return self.employee.user.username
+ 
+class TimeException (models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    date_start = models.DateField()
+    date_end = models.DateField(null=True)
+    reason = models.CharField(max_length=250)
+    time_start = models.TimeField(null=True)
+    time_end = models.TimeField(null=True)
+    
+    def __str__(self):
+        return self.employee.user.username
+     
