@@ -403,6 +403,9 @@ def check_availability(request, employee_id):
     return Response({'available_times': available_times_str})
 
 def refresh_access_token(refresh_token, employeeId):
+    if not refresh_token or not employeeId:
+        return "El token de refresco o el ID del empleado no son válidos."
+    
     try:
         employee = Employee.objects.get(id=employeeId)
     except Employee.DoesNotExist:
@@ -418,11 +421,14 @@ def refresh_access_token(refresh_token, employeeId):
 
     try:
         response = requests.post(url, data=data)
-        response.raise_for_status()
+        response.raise_for_status()  # Lanza una excepción si el código de estado HTTP no es 200
     except requests.exceptions.RequestException as e:
         return f"Error al comunicarse con Google: {str(e)}"
 
-    response_data = response.json()
+    try:
+        response_data = response.json()  # Intenta convertir la respuesta en JSON
+    except ValueError:
+        return "Error: la respuesta de Google no es un JSON válido."
 
     if 'access_token' not in response_data:
         error_message = response_data.get("error_description", "No se recibió access_token.")
@@ -430,23 +436,18 @@ def refresh_access_token(refresh_token, employeeId):
     
     employee.accestoken = response_data['access_token']
     employee.save()
-    
+
     return response_data['access_token']
 
 @api_view(['POST'])
-@csrf_exempt
 def create_appointment(request):
-    #Obtenemos los datos de la solicitud
+  
     employee_id = request.data.get('employee_id')
-
     year = request.data.get('year')
     month = request.data.get('month')
     day = request.data.get('day')
-    
     time = request.data.get('time')
-    
     services = request.data.get('services')
-    
     client_id = request.data.get('cliente_id')
     
     #Construimos fecha y hora
@@ -490,7 +491,7 @@ def create_appointment(request):
     if Appointment.objects.filter(date=new_date, employee=employee_id, time=time, estate="Pendiente").exists():
         return Response({"error": "Ya se ha reservado una cita a esta hora"}, status=status.HTTP_400_BAD_REQUEST)
         
-    
+    print("Validando disponibilidad de horario 1")
         
     #Validamos que la fecha y hora estén dentro del rango permitido
     if times:
@@ -569,10 +570,8 @@ def create_appointment(request):
             return Response({"error": "La cita no puede empezar despues de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
         if exception5:
             return Response({"error": "La cita no puede ser agendada por fuera de el horario del artista."}, status=status.HTTP_400_BAD_REQUEST)
-        if exception6:
-            return Response({"error": "La cita no puede ser agendada porque el artista no trabaja en ese horario por motivos personales"}, status=status.HTTP_400_BAD_REQUEST)
         
-    
+    print("Validando disponibilidad de horario 2")
     if appointments:
         for appointment in appointments:
             appointment_start_time = appointment.time
@@ -588,7 +587,7 @@ def create_appointment(request):
             
             if exception8:
                 if start_time.time() >= appointment_start_time.time() and start_time.time() < appointment_end_time.time():
-                    exception8 = True
+                    return Response({'error': 'No es posible agendar la cita porque la hora de inicio interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
                 else:
                     exception8 = False
                 
@@ -599,11 +598,13 @@ def create_appointment(request):
                     exception9 = False
             
             for time1 in times:
-                if exception10:
-                    if final_time.time() >= time1.time_end_day_two:
-                        exception10 = True
-                    else:
-                        exception10 = False
+                if time1.double_day:
+                    if exception10:
+                        print("time1", time1.time_end_day_two, "final_time", final_time.time())
+                        if final_time.time() >= time1.time_end_day_two:
+                            exception10 = True
+                        else:
+                            exception10 = False
                     
                 if exception11:
                     if final_time.time() >= time1.time_end_day_one:
@@ -611,13 +612,13 @@ def create_appointment(request):
                     else:
                         exception11 = False
 
-            
+            print("exceptions")
             if exceptions:
                 for exception in exceptions:
-                    
+                    print("pa ver si entla", exception)
                     if exception7:
                         if new_date >= exception.date_start and new_date <= exception.date_end:
-                            
+                            print("entré aunque no deberia entrar")
                             if final_time.time() <= exception.time_end and final_time.time() >= exception.time_start or appointment_start_time.time() <= exception.time_end and appointment_start_time.time() >= exception.time_start:
                                 exception7 = True
                             else:
@@ -642,51 +643,62 @@ def create_appointment(request):
         return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    refresh_access_token(employee.token, employee_id)
-    
-    credentials = Credentials(
-        token=employee.accestoken,
-        refresh_token=employee.token,
-        client_id=config('CLIENT_ID'),
-        client_secret=config('CLIENTE_SECRET'),
-        token_uri='https://oauth2.googleapis.com/token'
-    )
-        
-    if not credentials.token:
-        return Response({'error': 'El token de acceso no es válido.'}, status=400)
 
-    #Fechas de inicio y fin de la agenda (solamente para que funcione)
-    start_date = "2024-11-20"
-    end_date = "2024-11-20"
-    
-    try:
-       
-        appointment = Appointment.objects.create(
-            client=client,
-            employee=employee,
-            date=new_date,
-            time=time,
-            establisment=establishment,
-            estate='Pendiente',
-            method='Efectivo',
-        )
-        
-    except Exception as e:
-        return Response({'error': f'Error al crear la cita: {str(e)}'}, status=500)
-    
-    
-    try:
-        for service in services_list:
-            appointment.services.add(service) 
-    except Service.DoesNotExist:
-        return Response({'error': 'Servicio no encontrado.'}, status=404)
-    
-    try:
-        services_details = "\n".join([f"- {service.name}: ${service.price}" for service in services_list])
-        event_description = (
-            f"Detalles de la cita:\n\n"
+    # Crear la cita
+    appointment = Appointment.objects.create(
+        establisment=employee.establisment,
+        date=new_date,
+        time=time,
+        estate="Pendiente",  # Estado inicial
+        client=client,
+        employee=employee,
+        method="Efectivo",  # Ajustar según el método
+        event_id="",  # Se llenará después al crear el evento en Google Calendar
+    )
+    appointment.services.set(services_list)
+
+    # Crear el evento en Google Calendar
+    access_token = refresh_access_token(employee.accestoken, employee.id)  # Refrescar el token si es necesario
+    event_id = create_google_calendar_event(appointment, access_token)
+
+    # Actualizar el ID del evento en la cita
+    appointment.event_id = event_id
+    appointment.save()
+
+    # Enviar correo a los usuarios con la información de la cita
+    send_mail(
+        "Confirmación de Cita",
+        f"Hola,\n\nTu cita con {employee.user.first_name} ha sido agendada para el {new_date.strftime('%Y-%m-%d')} a las {time.strftime('%H:%M')}.\n"
+        f"\nDetalles de la cita:\n"
+        f"Cliente: {client.user.first_name} {client.user.last_name}\n"
+        f"Correo del cliente: {client.user.email}\n"
+        f"Empleado: {employee.user.first_name} {employee.user.last_name}\n"
+        f"Correo del empleado: {employee.user.email}\n"
+        f"Establecimiento: {employee.establisment.name}\n"
+        f"Servicios: {', '.join([service.name for service in services_list])}\n",
+        settings.EMAIL_HOST_USER,
+        [client.user.email, employee.user.email],
+        fail_silently=False,
+    )
+
+    return Response('Cita creada con éxito', status=201)
+
+# Función para crear un evento en Google Calendar
+def create_google_calendar_event(appointment, access_token):
+    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    client = appointment.client
+    employee = appointment.employee
+    establishment = appointment.establisment
+    services = appointment.services.all()
+    services_details = "\n".join([f"- {service.name}: ${service.price}" for service in services])
+    event_data = {
+        "summary": f"Cita con {client.user.first_name} {client.user.last_name}",
+        "description":  f"Detalles de la cita:\n\n"
             f"Cliente: {client.user.first_name} {client.user.last_name}\n"
             f"Correo del cliente: {client.user.email}\n\n"
             f"Profesional: {employee.user.first_name} {employee.user.last_name}\n"
@@ -694,79 +706,28 @@ def create_appointment(request):
             f"Servicios:\n{services_details}\n\n"
             f"Precio total: {appointment.total_price}\n\n"
             f"Establecimiento: {establishment.name}\n"
-            f"Dirección: {establishment.address}\n"
-        )
-        event_data = {
-                'summary': f'Cita en {establishment.name}',
-                'description': event_description,
-                'start': {
-                    'dateTime': f"{new_date}T{request.data.get('time')}:00",
-                    'timeZone': 'America/Bogota',
-                },
-                'end': {
-                    'dateTime': f"{new_date}T{(final_time).strftime('%H:%M')}:00",
-                    'timeZone': 'America/Bogota',
-                },
-                'attendees': [
-                    {'email': employee.user.email},
-                    {'email': client.user.email},
-                ],
-        }
+            f"Dirección: {establishment.address}\n",
+        "start": {
+            "dateTime": appointment.time.isoformat(),
+            "timeZone": "America/Bogota"
+        },
+        "end": {
+            "dateTime": (appointment.time + timedelta(hours=1)).isoformat(),  # Cita de 1 hora
+            "timeZone": "America/Bogota"
+        },
+        "attendees": [
+            {"email": appointment.client.user.email},
+            {"email": appointment.employee.user.email}
+        ],
+    }
 
-        headers = {
-                'Authorization': f'Bearer {credentials.token}',
-                'Content-Type': 'application/json'
-        }
-            
-        response = requests.post(
-                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-                headers=headers,
-                json=event_data
-        )
+    response = requests.post(url, headers=headers, json=event_data)
 
-        if response.status_code != 200:
-            Appointment.objects.get(id=appointment.id).delete()
-            return Response({
-                'error': 'No se pudo crear el evento en Google Calendar.',
-                'details': response.json()
-        }, status=500)
-        
-        else:
-            
-            event_id = response.json().get('id')
-            appointment.event_id = event_id
-            appointment.save()
-            subject = f"Cita en {establishment.name}"
-            message = (
-                f"Hola,\n\n"
-                f"Se ha agendado una cita en {establishment.name}. Aquí tienes los detalles:\n\n"
-                f"Cliente: {client.user.first_name} {client.user.last_name}\n"
-                f"Correo del cliente: {client.user.email}\n\n"
-                f"Profesiona {employee.user.first_name} {employee.user.last_name}\n"
-                f"Correo del profesional: {employee.user.email}\n\n"
-                f"Servicios:\n{services_details}\n\n"
-                f"Precio total: ${appointment.total_price}\n\n"
-                f"Establecimiento: {establishment.name}\n"
-                f"Dirección: {establishment.address}\n\n"
-                f"Fecha: {new_date.strftime('%Y-%m-%d')}\n"
-                f"Hora: {request.data.get('time')}\n\n"
-                "Si tienes alguna pregunta, no dudes en contactarnos.\n\n"
-                "Atentamente,\n"
-                "Equipo de Nicelook"
-            )
-
-            recipients = [client.user.email, employee.user.email]
-            send_mail(subject, message, settings.EMAIL_HOST_USER, recipients, fail_silently=False)
-            
-    except Exception as e:
-        return Response({'error': f'Error al crear el evento en Google Calendar: {str(e)}'}, status=500)
-
-    appointment.save()
-    
-    # Retornar respuesta exitosa
-    return Response({
-        'message': 'Cita creada y agendada en Google Calendar exitosamente.',
-    })
+    if response.status_code == 200:
+        event_id = response.json().get('id')
+        return event_id
+    else:
+        return None
 
 @api_view(['PATCH'])
 def cancel_appointments_day(request):
