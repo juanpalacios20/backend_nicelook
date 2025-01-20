@@ -7,7 +7,7 @@ from django import forms
 class EmployeeServices (models.Model):
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    duration = models.DurationField()
+    duration = models.DurationField(default=0)
     
 
     def __str__ (self):
