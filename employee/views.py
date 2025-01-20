@@ -1046,7 +1046,7 @@ class EmployeeLogin(APIView):
             'code': auth_code,  # El authorization code que recibiste del frontend
             'client_id': config("CLIENT_ID"),  # Tu client_id de Google
             'client_secret': config("CLIENTE_SECRET"),  # Tu client_secret de Google
-            'redirect_uri': "http://localhost:5173",  # Tu URI de redirección (debe coincidir con la configuración en Google)
+            'redirect_uri': "https://nicelook.vercel.app",  # Tu URI de redirección (debe coincidir con la configuración en Google)
             'grant_type': 'authorization_code',  # Tipo de flujo
         }
 
