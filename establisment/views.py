@@ -428,7 +428,7 @@ def getInfoEmployee(request):
         # Obtener los servicios del empleado
         services = EmployeeServices.objects.filter(employee=id)
         if services:
-            employe_data['services'] = g(services, many=True).data
+            employe_data['services'] = employeeServicesSerializer(services, many=True).data
             for service in employe_data['services']:
                 del service['employee']
                 del service['service']['establisment']
