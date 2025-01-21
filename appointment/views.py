@@ -607,7 +607,8 @@ def create_appointment(request):
                             exception10 = False
                     
                 if exception11:
-                    if final_time.time() >= time1.time_end_day_one:
+                    print("final_time exception11", final_time.time(), "time1 exception11", time1.time_end_day_one)
+                    if final_time.time() >= time1.time_end_day_one and final_time.time() <= time1.time_start_day_two:
                         exception11 = True
                     else:
                         exception11 = False
@@ -623,6 +624,8 @@ def create_appointment(request):
                                 exception7 = True
                             else:
                                 exception7 = False
+                        else:
+                            exception7 = False
             else:
                 exception7 = False
     else: 
@@ -638,9 +641,9 @@ def create_appointment(request):
     if exception9:
         return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con una cita que ya esta programada'}, status=status.HTTP_400_BAD_REQUEST)
     if exception10:
-        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista 1'}, status=status.HTTP_400_BAD_REQUEST)
     if exception11:
-        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'No es posible agendar la cita porque la hora de finalización interfiere con el horario laboral del artista 2'}, status=status.HTTP_400_BAD_REQUEST)
     if not employee.token:
         return Response({'error': 'El artista no tiene configurada la sincronización con Google Calendar.'}, status=status.HTTP_400_BAD_REQUEST)
 
