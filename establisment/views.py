@@ -291,12 +291,13 @@ def getAvailableEmployees(request, id_employee):
         time_ranges = Time.objects.filter(employee=employee)
         exception_ranges = TimeException.objects.filter(employee=employee)
         appointments = Appointment.objects.filter(
-            date=new_date, 
-            employee=employee, 
+            date=new_date,
+            employee=employee,
             estate__icontains='Pendiente'
         ).order_by('time')
         
         disponibilidad = []
+        excepciones = []
 
         if not time_ranges:
             return Response({"error": "No se encontraron horarios para el empleado"}, status=status.HTTP_400_BAD_REQUEST)
@@ -318,34 +319,25 @@ def getAvailableEmployees(request, id_employee):
                 date_start__lte=new_date.date(),
                 date_end__gte=new_date.date()
             )
+            
+            for exception in current_exceptions:
+                excepciones.append({
+                    'time_start': str(exception.time_start),
+                    'time_end': str(exception.time_end)
+                })
 
             # Verificar disponibilidad en el primer turno
             current_start_time = start_time
             for exception in current_exceptions:
-                if exception.date_end:
-                            if exception.date_start <= new_date.date() and exception.date_end >= new_date.date():
-                                if exception.time_start and exception.time_end:
-                                    # Excluir el intervalo de la excepción
-                                    if exception.time_start <= current_start_time and current_start_time < exception.time_end:
-                                        print("entre si")
-                                        current_start_time = exception.time_end
-                                    if exception.time_start < end_time and end_time <= exception.time_end:
-                                        print("entre tambien")
-                                        end_time = exception.time_start
+                if exception.time_start and exception.time_end:
+                    # Si hay un intervalo antes de la excepción
+                    if current_start_time < exception.time_start:
+                        disponibilidad.append((current_start_time, exception.time_start))
+                    # Ajustar el inicio después de la excepción
+                    if exception.time_end > current_start_time:
+                        current_start_time = exception.time_end
 
-            for appointment in appointments:
-                if appointment.time.time() >= current_start_time and appointment.time.time() < end_time:
-                    if appointment.time.time() > current_start_time:
-                        disponibilidad.append((current_start_time, appointment.time.time()))
-                    # Calcular duración total de los servicios
-                    contador = timedelta(hours=0, minutes=0, seconds=0)
-                    for s in appointment.services.all():
-                        service_duration = EmployeeServices.objects.filter(
-                            employee=employee, service=s
-                        ).first().duration
-                        contador += service_duration
-                    current_start_time = (datetime.combine(new_date, appointment.time.time()) + contador).time()
-
+            # Si queda tiempo después de la última excepción
             if current_start_time < end_time:
                 disponibilidad.append((current_start_time, end_time))
 
@@ -353,31 +345,15 @@ def getAvailableEmployees(request, id_employee):
             if time_range.double_day:
                 current_start_time_two = start_time_two
                 for exception in current_exceptions:
-                    if exception.date_end:
-                            if exception.date_start <= new_date.date() and exception.date_end >= new_date.date():
-                                if exception.time_start and exception.time_end:
-                                    # Excluir el intervalo de la excepción
-                                    print(exception.time_start, current_start_time_two, exception.time_end)
-                                    if exception.time_start <= current_start_time_two and current_start_time_two < exception.time_end:
-                                        print("si entré")
-                                        current_start_time_two = exception.time_end
-                                    if exception.time_start < end_time and end_time <= exception.time_end:
-                                        print("tambien entré")
-                                        end_time_two = exception.time_start
+                    if exception.time_start and exception.time_end:
+                        # Si hay un intervalo antes de la excepción
+                        if current_start_time_two < exception.time_start:
+                            disponibilidad.append((current_start_time_two, exception.time_start))
+                        # Ajustar el inicio después de la excepción
+                        if exception.time_end > current_start_time_two:
+                            current_start_time_two = exception.time_end
 
-                for appointment in appointments:
-                    if appointment.time.time() >= current_start_time_two and appointment.time.time() < end_time_two:
-                        if appointment.time.time() > current_start_time_two:
-                            disponibilidad.append((current_start_time_two, appointment.time.time()))
-                        # Calcular duración total de los servicios
-                        contador = timedelta(hours=0, minutes=0, seconds=0)
-                        for s in appointment.services.all():
-                            service_duration = EmployeeServices.objects.filter(
-                                employee=employee, service=s
-                            ).first().duration
-                            contador += service_duration
-                        current_start_time_two = (datetime.combine(new_date, appointment.time.time()) + contador).time()
-
+                # Si queda tiempo después de la última excepción
                 if current_start_time_two < end_time_two:
                     disponibilidad.append((current_start_time_two, end_time_two))
 
@@ -386,7 +362,10 @@ def getAvailableEmployees(request, id_employee):
             [str(time[0]), str(time[1])] for time in disponibilidad
         ]
         
-        return Response({'disponibilidad': formatted_disponibilidad}, status=status.HTTP_200_OK)
+        return Response({
+            'disponibilidad': formatted_disponibilidad,
+            'excepciones': excepciones
+        }, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

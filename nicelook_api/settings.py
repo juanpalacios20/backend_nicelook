@@ -28,10 +28,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Ahora usa config para obtener tu clave secreta
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = 'django-insecure-7pdxf=j1!sqj7&z7&hszn6pp=(*+8kyxttqdu$e0+#fm8@$9at'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -119,7 +119,7 @@ WSGI_APPLICATION = 'nicelook_api.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-     'default': dj_database_url.config(default= os.environ.get('DATABASE_URL'))
+     'default': dj_database_url.config(default= 'postgresql://db_nicelook_user:HYOdpHtALcVnEoinVzFaH99sFHnCE9XL@dpg-cu76c8l6l47c73c78fbg-a.ohio-postgres.render.com/db_nicelook')
 }
 
 
@@ -196,8 +196,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER') # Cambia por tu correo de Gmail
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')    # Cambia por tu contraseña de Gmail o una App Password si tienes 2FA habilitado
+EMAIL_HOST_USER = 'nicelooknk2024@gmail.com' # Cambia por tu correo de Gmail
+EMAIL_HOST_PASSWORD = 'cuhr fbsd zesx nvsk'   # Cambia por tu contraseña de Gmail o una App Password si tienes 2FA habilitado
 # Configuración para permitir inicio de sesión a través de Google
 
 
